@@ -62,6 +62,7 @@ bool PongLogic::tick(uint32_t dt) {
 
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 
 void Pong::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _tft = &tft; _scores = &scores;
@@ -98,43 +99,36 @@ void Pong::draw() {
   _dirty = false;
 
   TFT_eSPI& s = *_tft;
-  uint16_t bg  = s.color24to16(Theme::BG);
-  uint16_t acc = s.color24to16(Theme::ACCENT);
-  uint16_t dim = s.color24to16(Theme::DIM);
-  uint16_t txt = s.color24to16(Theme::TEXT);
-  uint16_t drk = s.color24to16(Theme::DARK);
-
-  s.fillScreen(bg);
-
-  // Center dashed line
-  for (int x = 0; x < 240; x += 14)
-    s.drawFastHLine(x, 160, 8, drk);
-
-  // AI paddle (top, cyan)
-  s.fillRect(_logic.aiX(), PongLogic::AI_Y, PongLogic::PAD_W, PongLogic::PAD_H, dim);
-  // Player paddle (bottom, pink)
-  s.fillRect(_logic.playerX(), PongLogic::PLAYER_Y, PongLogic::PAD_W, PongLogic::PAD_H, acc);
-  // Ball
-  s.fillCircle(_logic.ballX(), _logic.ballY(), PongLogic::BALL_R, txt);
-
-  // Scores
-  char buf[8];
-  snprintf(buf, sizeof(buf), "%d", _logic.aiScore());
-  s.setTextColor(dim, bg);
-  s.drawString(buf, 20, 120, 6);
-  snprintf(buf, sizeof(buf), "%d", _logic.playerScore());
-  s.setTextColor(acc, bg);
-  s.drawString(buf, 140, 120, 6);
 
   if (_done) {
     bool won = _logic.playerScore() >= PongLogic::WIN_SCORE;
-    s.setTextColor(acc, bg);
-    int gw = s.textWidth(won ? "YOU WIN!" : "GAME OVER", 4);
-    s.drawString(won ? "YOU WIN!" : "GAME OVER", 120 - gw / 2, 145, 4);
-    s.setTextColor(txt, bg);
-    int tw = s.textWidth("TAP TO EXIT", 2);
-    s.drawString("TAP TO EXIT", 120 - tw / 2, 185, 2);
+    drawGameOverOverlay(s, "PONG", (uint32_t)_logic.playerScore() * 100, Theme::PONG565, won);
+    return;
   }
+
+  s.fillScreen(Theme::BG565);
+
+  // Centre dashed line
+  for (int x = 0; x < 240; x += 14)
+    s.drawFastHLine(x, 160, 8, Theme::SEP565);
+
+  // AI paddle (top, game colour)
+  s.fillRect(_logic.aiX(), PongLogic::AI_Y, PongLogic::PAD_W, PongLogic::PAD_H, Theme::PONG565);
+  // Player paddle (bottom, white)
+  s.fillRect(_logic.playerX(), PongLogic::PLAYER_Y, PongLogic::PAD_W, PongLogic::PAD_H, Theme::TEXT565);
+  // Ball
+  s.fillCircle(_logic.ballX(), _logic.ballY(), PongLogic::BALL_R, Theme::TEXT565);
+
+  // Scores centred
+  char buf[8];
+  snprintf(buf, sizeof(buf), "%d", _logic.aiScore());
+  s.setTextColor(Theme::MUTED565, Theme::BG565);
+  int aw = s.textWidth(buf, 4);
+  s.drawString(buf, 60 - aw / 2, 130, 4);
+  snprintf(buf, sizeof(buf), "%d", _logic.playerScore());
+  s.setTextColor(Theme::TEXT565, Theme::BG565);
+  int pw = s.textWidth(buf, 4);
+  s.drawString(buf, 180 - pw / 2, 130, 4);
 }
 
 void Pong::end() {
