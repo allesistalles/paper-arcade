@@ -1,6 +1,7 @@
 #include "PacMan.h"
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 #include <cstdlib>
 #include <cstring>
 
@@ -149,68 +150,55 @@ void PacMan::update(const InputEvent& input) {
 }
 
 void PacMan::draw() {
-  if(!_dirty) return;
-  _dirty=false;
+  if (!_dirty) return;
+  _dirty = false;
 
-  TFT_eSPI& s=*_tft;
-  uint16_t bg =s.color24to16(Theme::BG);
-  uint16_t wal=s.color24to16(Theme::SECONDARY);
-  uint16_t dot=s.color24to16(Theme::DIM);
-  uint16_t pel=s.color24to16(Theme::ACCENT);
-  uint16_t txt=s.color24to16(Theme::TEXT);
-  uint16_t acc=s.color24to16(Theme::ACCENT);
+  TFT_eSPI& s = *_tft;
 
-  s.fillScreen(bg);
+  if (_gameOver) {
+    bool won = (_dotsLeft == 0);
+    drawGameOverOverlay(s, "PAC-MAN", _score, Theme::PACMAN565, won);
+    return;
+  }
 
-  // Score + lives header
-  char buf[32];
-  snprintf(buf,sizeof(buf),"%lu",(unsigned long)_score);
-  s.setTextColor(txt,bg); s.drawString(buf,4,14,2);
-  snprintf(buf,sizeof(buf),"LIVES %d",_lives);
-  int lw=s.textWidth(buf,2);
-  s.drawString(buf,240-lw-4,14,2);
+  s.fillScreen(Theme::BG565);
 
-  // Maze
-  for(int y=0;y<ROWS;y++){
-    for(int x=0;x<COLS;x++){
-      int px=x*TILE, py=MAZE_Y+y*TILE;
-      uint8_t v=_grid[y][x];
-      if(v==1) s.fillRect(px,py,TILE,TILE,wal);
-      else if(v==0) s.fillCircle(px+TILE/2,py+TILE/2,2,dot);
-      else if(v==2) s.fillCircle(px+TILE/2,py+TILE/2,5,pel);
+  // Maze (MAZE_Y = 48, safely below Launcher HUD at y=0..21)
+  for (int y = 0; y < ROWS; y++) {
+    for (int x = 0; x < COLS; x++) {
+      int px = x * TILE;
+      int py = MAZE_Y + y * TILE;
+      uint8_t v = _grid[y][x];
+      if (v == 1)      s.fillRect(px, py, TILE, TILE, Theme::PACMAN565);
+      else if (v == 0) s.fillCircle(px + TILE / 2, py + TILE / 2, 2, Theme::MUTED565);
+      else if (v == 2) s.fillCircle(px + TILE / 2, py + TILE / 2, 5, Theme::ACCENT565);
     }
   }
 
   // Pac-Man
-  int px=_pac.x*TILE+dirDx(_pac.dir)*_pac.pix+TILE/2;
-  int py=MAZE_Y+_pac.y*TILE+dirDy(_pac.dir)*_pac.pix+TILE/2;
-  s.fillCircle(px,py,6,0xFFE0);
+  int px = _pac.x * TILE + dirDx(_pac.dir) * _pac.pix + TILE / 2;
+  int py = MAZE_Y + _pac.y * TILE + dirDy(_pac.dir) * _pac.pix + TILE / 2;
+  s.fillCircle(px, py, 6, Theme::FLAPPY565);
 
   // Ghosts
-  static const uint16_t GH[3]={0xF800,0xF81F,0x07FF};
-  for(int i=0;i<3;i++){
-    int gx=_ghosts[i].x*TILE+dirDx(_ghosts[i].dir)*_ghosts[i].pix+TILE/2;
-    int gy=MAZE_Y+_ghosts[i].y*TILE+dirDy(_ghosts[i].dir)*_ghosts[i].pix+TILE/2;
-    s.fillCircle(gx,gy,6,_frightened?0x001F:GH[i]);
+  static const uint16_t GH[3] = { Theme::DANGER565, Theme::G2048565, Theme::TETRIS565 };
+  for (int i = 0; i < 3; i++) {
+    int gx = _ghosts[i].x * TILE + dirDx(_ghosts[i].dir) * _ghosts[i].pix + TILE / 2;
+    int gy = MAZE_Y + _ghosts[i].y * TILE + dirDy(_ghosts[i].dir) * _ghosts[i].pix + TILE / 2;
+    s.fillCircle(gx, gy, 6, _frightened ? Theme::ACCENT565 : GH[i]);
   }
 
-  // D-pad zone hints at bottom
-  s.setTextColor(s.color24to16(0x1a1040),bg);
-  s.fillTriangle(120,226,112,238,128,238,s.color24to16(0x1a1040)); // up arrow
-  s.fillTriangle(120,318,112,306,128,306,s.color24to16(0x1a1040)); // down arrow
-  s.fillTriangle(14,272,26,264,26,280,s.color24to16(0x1a1040));    // left arrow
-  s.fillTriangle(226,272,214,264,214,280,s.color24to16(0x1a1040)); // right arrow
-
-  if(_gameOver){
-    s.fillRect(20,110,200,60,bg);
-    s.setTextColor(acc,bg);
-    const char* msg=(_dotsLeft==0)?"YOU WIN!":"GAME OVER";
-    int gw=s.textWidth(msg,4);
-    s.drawString(msg,120-gw/2,115,4);
-    s.setTextColor(txt,bg);
-    int tw=s.textWidth("TAP TO EXIT",2);
-    s.drawString("TAP TO EXIT",120-tw/2,155,2);
+  // Lives dots at y=310
+  for (int i = 0; i < 3; i++) {
+    uint16_t col = (i < (int)_lives) ? Theme::PACMAN565 : Theme::SEP565;
+    s.fillCircle(108 + i * 14, 310, 4, col);
   }
+
+  // D-pad arrows at bottom
+  s.fillTriangle(120, 226, 112, 238, 128, 238, Theme::SEP565);
+  s.fillTriangle(120, 318, 112, 306, 128, 306, Theme::SEP565);
+  s.fillTriangle(14,  272, 26,  264, 26,  280, Theme::SEP565);
+  s.fillTriangle(226, 272, 214, 264, 214, 280, Theme::SEP565);
 }
 
 void PacMan::end() {}
