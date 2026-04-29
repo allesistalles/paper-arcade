@@ -60,28 +60,25 @@ bool checkOTAHold() {
 }
 
 void enterOTAMode() {
-  // Layout for portrait 240×320: center text horizontally
-  tft.fillScreen(tft.color24to16(Theme::BG));
-  tft.setTextColor(tft.color24to16(Theme::ACCENT), tft.color24to16(Theme::BG));
+  tft.fillScreen(Theme::BG565);
+  tft.setTextColor(Theme::ACCENT565, Theme::BG565);
   tft.drawString("OTA MODE", 50, 80, 4);
-
   WiFi.mode(WIFI_STA);
   WiFi.begin();
   uint32_t t = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - t < 10000) delay(200);
-
-  tft.setTextColor(tft.color24to16(Theme::TEXT), tft.color24to16(Theme::BG));
+  tft.setTextColor(Theme::TEXT565, Theme::BG565);
   if (WiFi.status() == WL_CONNECTED) {
     tft.drawString(WiFi.localIP().toString(), 30, 150, 2);
     ArduinoOTA.setHostname("paper-arcade");
     ArduinoOTA.begin();
-    tft.setTextColor(tft.color24to16(Theme::DIM), tft.color24to16(Theme::BG));
+    tft.setTextColor(Theme::MUTED565, Theme::BG565);
     tft.drawString("Ready for upload", 30, 180, 2);
     while (true) ArduinoOTA.handle();
   } else {
-    tft.setTextColor(tft.color24to16(Theme::ACCENT), tft.color24to16(Theme::BG));
+    tft.setTextColor(Theme::DANGER565, Theme::BG565);
     tft.drawString("WiFi failed", 50, 150, 2);
-    tft.setTextColor(tft.color24to16(Theme::DIM), tft.color24to16(Theme::BG));
+    tft.setTextColor(Theme::MUTED565, Theme::BG565);
     tft.drawString("Set creds via Serial", 25, 180, 2);
     delay(3000);
     ESP.restart();
@@ -101,9 +98,12 @@ void setup() {
   // Bring up the touch VSPI bus before any touched() probe is called.
   touchSPI.begin(TOUCH_SCK, TOUCH_MISO, TOUCH_MOSI, TOUCH_CS_PIN);
 
-  tft.setTextColor(tft.color24to16(Theme::ACCENT), tft.color24to16(Theme::BG));
-  tft.drawString("PAPER", 65, 130, 6);
-  tft.drawString("ARCADE", 60, 180, 6);
+  tft.fillScreen(Theme::BG565);
+  tft.setTextColor(Theme::TEXT565, Theme::BG565);
+  int sw = tft.textWidth("PAPER ARCADE", 4);
+  tft.drawString("PAPER ARCADE", 120 - sw / 2, 146, 4);
+  // Short blue underline
+  tft.fillRect(105, 178, 30, 2, Theme::ACCENT565);
   delay(800);
 
   if (checkOTAHold()) enterOTAMode();
