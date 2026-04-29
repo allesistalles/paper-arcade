@@ -103,6 +103,7 @@ Each row is a full-width tap target (240px × 28px):
 ```
 
 - Text: muted, font size 1, centred, y=308
+- Content: `TAP || TO PAUSE`  (references the visible pause icon in the HUD)
 
 ---
 
@@ -123,11 +124,18 @@ Applied to every game. Games themselves handle their own play-area rendering. Th
 ```
 
 - Game name: font size 2, game accent colour, x=6, y=5
-- Score: font size 2, white, right-aligned x=234, y=5
+- Score: font size 2, white, right-aligned x=200, y=5 (shifted left to leave room for pause icon)
+- Pause icon: `||` in MUTED colour, x=218, y=5, font size 2 — tappable pause entry point
 - Lives (where applicable — Breakout, Space Invaders): dots at bottom of game area
   - Filled dot = `game accent colour`, empty dot = `SEP`, dot radius = 4px, y=310
 - Accent underline: `drawFastHLine(0, 20, 240, gameAccentColour565)`
 - **Game play area:** y=22 to y=319 (298px height for gameplay)
+
+**Pause entry points (two ways to reach pause):**
+1. **Tap the HUD strip** — any tap with y∈[0,21] while in-game opens the pause overlay. The `||` icon makes this discoverable.
+2. **Long-press** — hold anywhere on screen for 1.5s (existing LONG_PRESS event). Backup for when the strip is hard to hit mid-game.
+
+Both routes open the same PAUSED overlay. This is handled in `Launcher::update()` by checking if an in-game TAP lands in the HUD zone before forwarding input to the active game.
 
 **Implementation note — compositing order:**
 1. `_active->draw()` fills the full 240×320 canvas (including y=0..21). In normal play this is game content; on game-over it is the full-screen overlay.
