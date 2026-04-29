@@ -11,9 +11,9 @@ namespace Theme {
   constexpr uint32_t DARK      = 0x2d0a4e;
 
   // Pre-computed RGB565
-  constexpr uint16_t BG565        = 0x0801;
-  constexpr uint16_t ACCENT565    = 0xF94B;
-  constexpr uint16_t SECONDARY565 = 0x7016;
+  constexpr uint16_t BG565        = 0x0804;
+  constexpr uint16_t ACCENT565    = 0xF130;
+  constexpr uint16_t SECONDARY565 = 0x7056;
   constexpr uint16_t TEXT565      = 0xFFFF;
   constexpr uint16_t DIM565       = 0x4E5E;
   constexpr uint16_t DARK565      = 0x2849;
