@@ -2,18 +2,28 @@
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
 
-// Portrait layout: 240w × 320h
-//   Title:        y=8..36   (size 4)
-//   Card:         x=10..230 (220w), y=50..270 (220h)
-//     Initial:    centered ~y=85   (size 7)
-//     Name:       centered ~y=185  (size 4)
-//     HI score:   centered ~y=230  (size 2)
-//   Arrows:       y=140 (size 6) at x=2 (left) and x=222 (right)
-//   Dots:         y=295
+// Portrait 240×320 grid layout:
+//   Header:  y=0..44   — title
+//   Grid:    y=46..320 — 2 cols × 4 rows, cell 120×68px
+//   Pause overlay appears on LONG_PRESS while in-game
+
+static const uint16_t GAME_COLORS[] = {
+  0x07E0,  // Snake    — green
+  0x4E5E,  // Pong     — cyan (DIM)
+  0xFFFF,  // Simon    — white
+  0xF800,  // Mines    — red
+  0xFC60,  // 2048     — orange
+  0xF94B,  // Breakout — pink (ACCENT)
+  0xFFE0,  // Flappy   — yellow
+  0x07FF,  // slot 8   — aqua
+  0x780F,  // slot 9   — purple
+  0xFE40,  // slot 10  — gold
+};
 
 void Launcher::begin(TFT_eSPI& tft, AssetManager& assets, ScoreManager& scores) {
   _tft = &tft; _assets = &assets; _scores = &scores;
   _needsRedraw = true;
+  _paused = false;
 }
 
 void Launcher::addGame(Game* g) {
@@ -21,107 +31,169 @@ void Launcher::addGame(Game* g) {
 }
 
 Game* Launcher::update(const InputEvent& evt) {
-  // Must return _active on every in-game frame (even on NONE) — paper-arcade.ino's
-  // launch-tap suppression depends on launcher.update() consistently signaling
-  // in-game state via a non-null return.
-  if (_inGame) return _active;
+  // Must return _active on every in-game frame — launch-tap suppression
+  // in paper-arcade.ino depends on this consistent non-null return.
+  if (_inGame) {
+    if (evt.type == InputEvent::LONG_PRESS) {
+      // Show pause overlay
+      _paused = true;
+      _needsRedraw = true;
+      return _active;
+    }
+    if (_paused) {
+      if (evt.type == InputEvent::TAP) {
+        if (evt.y > 160 && evt.y < 220) {
+          // Bottom half of overlay = QUIT
+          returnToMenu();
+          return nullptr;
+        } else {
+          // Top half = RESUME
+          _paused = false;
+          _needsRedraw = false;
+        }
+      }
+      return _active;
+    }
+    return _active;
+  }
   if (_count == 0) return nullptr;
 
-  if (evt.type == InputEvent::SWIPE_LEFT && _current < _count - 1) {
-    _current++;
-    _needsRedraw = true;
-  } else if (evt.type == InputEvent::SWIPE_RIGHT && _current > 0) {
-    _current--;
-    _needsRedraw = true;
-  } else if (evt.type == InputEvent::TAP) {
-    Serial.printf("[launcher] TAP at (%u,%u) count=%d current=%d\n",
-                  evt.x, evt.y, _count, _current);
-    // Card hit-box: x∈[10,230], y∈[50,270]
-    if (evt.x >= 10 && evt.x <= 230 && evt.y >= 50 && evt.y <= 270) {
-      Serial.printf("[launcher] LAUNCHING %s\n", _games[_current]->name());
-      _active = _games[_current];
-      _inGame = true;
-      _active->begin(*_tft, *_assets, *_scores);
-      Serial.println("[launcher] begin() returned, returning to main loop");
-      return _active;
-    } else {
-      Serial.println("[launcher] tap outside card hit-box");
+  if (evt.type == InputEvent::TAP) {
+    // Map tap to grid cell
+    int col = evt.x / 120;
+    int row = (int)(evt.y - 46) / 68;
+    if (col >= 0 && col < 2 && row >= 0 && row < 4) {
+      int idx = row * 2 + col;
+      if (idx < _count) {
+        _active = _games[idx];
+        _inGame = true;
+        _paused = false;
+        _active->begin(*_tft, *_assets, *_scores);
+        return _active;
+      }
     }
   }
   return nullptr;
 }
 
 void Launcher::draw() {
-  if (_inGame) { if (_active) _active->draw(); return; }
+  if (_inGame) {
+    if (_active) _active->draw();
+    if (_paused) drawPauseOverlay();
+    return;
+  }
   if (!_needsRedraw) return;
-
-  TFT_eSPI& t = *_tft;
-  t.fillScreen(t.color24to16(Theme::BG));
-  t.setTextColor(t.color24to16(Theme::ACCENT), t.color24to16(Theme::BG));
-  // "PAPER ARCADE" centered, size 4 → ~168px wide, x = (240-168)/2 = 36
-  t.drawString("PAPER ARCADE", 36, 12, 4);
-
-  if (_count > 0) drawCard();
-  drawArrows();
-  drawDots();
-
   _needsRedraw = false;
-}
 
-void Launcher::drawCard() {
   TFT_eSPI& t = *_tft;
-  Game* g = _games[_current];
+  uint16_t bg  = t.color24to16(Theme::BG);
+  uint16_t acc = t.color24to16(Theme::ACCENT);
+  uint16_t sec = t.color24to16(Theme::SECONDARY);
+  uint16_t drk = t.color24to16(Theme::DARK);
+  uint16_t txt = t.color24to16(Theme::TEXT);
+  uint16_t dim = t.color24to16(Theme::DIM);
 
-  int x = 10, y = 50, w = 220, h = 220;
-  t.drawRoundRect(x, y, w, h, 8, t.color24to16(Theme::ACCENT));
-  t.fillRoundRect(x + 1, y + 1, w - 2, h - 2, 7, t.color24to16(Theme::DARK));
+  t.fillScreen(bg);
 
-  // Game icon: large initial letter, centered
-  char initial[2] = { g->name()[0], 0 };
-  int initW = t.textWidth(initial, 7);
-  t.setTextColor(t.color24to16(Theme::ACCENT), t.color24to16(Theme::DARK));
-  t.drawString(initial, 120 - initW / 2, 90, 7);
+  // ── Header ─────────────────────────────────────────────────────
+  t.fillRect(0, 0, 240, 44, drk);
+  // "PAPER" left, "ARCADE" right — both in their accent colours
+  t.setTextColor(acc, drk);
+  t.drawString("PAPER", 8, 8, 4);
+  t.setTextColor(sec, drk);
+  int aw = t.textWidth("ARCADE", 4);
+  t.drawString("ARCADE", 236 - aw, 8, 4);
+  // Neon divider line
+  t.drawFastHLine(0, 43, 240, acc);
+  t.drawFastHLine(0, 44, 240, sec);
 
-  // Game name, centered
-  t.setTextColor(t.color24to16(Theme::TEXT), t.color24to16(Theme::DARK));
-  int nameW = t.textWidth(g->name(), 4);
-  t.drawString(g->name(), 120 - nameW / 2, 195, 4);
+  // ── Game grid ──────────────────────────────────────────────────
+  for (int i = 0; i < 8; i++) {
+    int col = i % 2;
+    int row = i / 2;
+    int x   = col * 120;
+    int y   = 46 + row * 68;
 
-  // High score, centered
-  char buf[32];
-  snprintf(buf, sizeof(buf), "HI: %lu", (unsigned long)g->highScore());
-  t.setTextColor(t.color24to16(Theme::DIM), t.color24to16(Theme::DARK));
-  int hiW = t.textWidth(buf, 2);
-  t.drawString(buf, 120 - hiW / 2, 235, 2);
+    if (i < _count) {
+      Game* g = _games[i];
+      uint16_t gc = GAME_COLORS[i % 10];
+
+      // Card background
+      t.fillRect(x + 2, y + 2, 116, 64, drk);
+      // Coloured top accent bar
+      t.fillRect(x + 2, y + 2, 116, 5, gc);
+      // Card border
+      t.drawRect(x + 1, y + 1, 118, 66, gc);
+
+      // Game name
+      t.setTextColor(gc, drk);
+      int nw = t.textWidth(g->name(), 2);
+      t.drawString(g->name(), x + 60 - nw / 2, y + 14, 2);
+
+      // High score
+      char buf[20];
+      snprintf(buf, sizeof(buf), "HI:%lu", (unsigned long)g->highScore());
+      t.setTextColor(dim, drk);
+      int hw = t.textWidth(buf, 2);
+      t.drawString(buf, x + 60 - hw / 2, y + 38, 2);
+
+      // "TAP" hint if score is 0
+      if (g->highScore() == 0) {
+        t.setTextColor(t.color24to16(0x2d2050), drk);
+        int tw = t.textWidth("TAP", 1);
+        t.drawString("TAP", x + 60 - tw / 2, y + 56, 1);
+      }
+    } else {
+      // Empty slot — subtle dashed border
+      t.drawRect(x + 1, y + 1, 118, 66, t.color24to16(0x1a1030));
+      t.setTextColor(t.color24to16(0x1a1030), bg);
+      t.drawString("+", x + 54, y + 22, 4);
+    }
+  }
+
+  // Bottom hint
+  t.setTextColor(t.color24to16(0x2d2050), bg);
+  int hintW = t.textWidth("hold = pause", 1);
+  t.drawString("hold = pause", 120 - hintW / 2, 314, 1);
 }
 
-void Launcher::drawArrows() {
+void Launcher::drawPauseOverlay() {
   TFT_eSPI& t = *_tft;
-  if (_current > 0) {
-    t.setTextColor(t.color24to16(Theme::ACCENT), t.color24to16(Theme::BG));
-    t.drawString("<", 0, 145, 6);
-  }
-  if (_current < _count - 1) {
-    t.setTextColor(t.color24to16(Theme::ACCENT), t.color24to16(Theme::BG));
-    t.drawString(">", 222, 145, 6);
-  }
+  uint16_t acc = t.color24to16(Theme::ACCENT);
+  uint16_t bg  = t.color24to16(Theme::BG);
+  uint16_t drk = t.color24to16(Theme::DARK);
+  uint16_t txt = t.color24to16(Theme::TEXT);
+  uint16_t dim = t.color24to16(Theme::DIM);
+
+  // Semi-transparent overlay: just a dark rounded rect in the centre
+  t.fillRoundRect(20, 100, 200, 140, 10, drk);
+  t.drawRoundRect(20, 100, 200, 140, 10, acc);
+
+  t.setTextColor(acc, drk);
+  int pw = t.textWidth("PAUSED", 4);
+  t.drawString("PAUSED", 120 - pw / 2, 112, 4);
+
+  // Resume button (top half of box)
+  t.fillRoundRect(35, 148, 170, 36, 6, t.color24to16(Theme::SECONDARY));
+  t.setTextColor(txt, t.color24to16(Theme::SECONDARY));
+  int rw = t.textWidth("RESUME", 2);
+  t.drawString("RESUME", 120 - rw / 2, 160, 2);
+
+  // Quit button (bottom half)
+  t.fillRoundRect(35, 192, 170, 36, 6, t.color24to16(0x500010));
+  t.setTextColor(acc, t.color24to16(0x500010));
+  int qw = t.textWidth("QUIT TO MENU", 2);
+  t.drawString("QUIT TO MENU", 120 - qw / 2, 204, 2);
 }
 
-void Launcher::drawDots() {
-  TFT_eSPI& t = *_tft;
-  if (_count == 0) return;
-  int totalW = _count * 12;
-  int startX = (240 - totalW) / 2 + 4;
-  for (int i = 0; i < _count; i++) {
-    uint16_t col = (i == _current) ? t.color24to16(Theme::ACCENT) : t.color24to16(Theme::DARK);
-    int r = (i == _current) ? 4 : 3;
-    t.fillCircle(startX + i * 12, 295, r, col);
-  }
-}
+void Launcher::drawCard()   {}   // unused — grid replaces per-card draw
+void Launcher::drawArrows() {}
+void Launcher::drawDots()   {}
 
 void Launcher::returnToMenu() {
   if (_active) { _active->end(); _active = nullptr; }
   _inGame = false;
+  _paused = false;
   _needsRedraw = true;
 }
 

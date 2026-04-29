@@ -50,12 +50,22 @@ InputEvent InputManager::read() {
       _lastX  = sx; _lastY  = sy;
       _touchStart = millis();
       _wasTouched = true;
-      Serial.printf("[touch] DOWN raw=(%u,%u) screen=(%u,%u)\n", p.x, p.y, sx, sy);
+      _longPressFired = false;
     } else {
       int16_t mdx = (int16_t)sx - (int16_t)_startX;
       int16_t mdy = (int16_t)sy - (int16_t)_startY;
       int amx = mdx < 0 ? -mdx : mdx;
       int amy = mdy < 0 ? -mdy : mdy;
+
+      // Long press: stationary hold ≥ 1500 ms
+      if (!_longPressFired && (amx < 12 && amy < 12) &&
+          (millis() - _touchStart >= 1500)) {
+        evt.type = InputEvent::LONG_PRESS;
+        evt.x = sx; evt.y = sy;
+        _longPressFired = true;
+        return evt;
+      }
+
       if (amx > 5 || amy > 5) {
         evt.type = InputEvent::DRAG;
         evt.x = sx; evt.y = sy;
@@ -64,15 +74,17 @@ InputEvent InputManager::read() {
       _lastX = sx; _lastY = sy;
     }
   } else if (_wasTouched) {
-    uint32_t held = millis() - _touchStart;
-    int16_t dx = (int16_t)_lastX - (int16_t)_startX;
-    int16_t dy = (int16_t)_lastY - (int16_t)_startY;
-    evt.type = classify(dx, dy, held);
-    evt.x  = _lastX;  evt.y  = _lastY;
-    evt.dx = dx;      evt.dy = dy;
+    // Don't emit a tap/swipe if we already fired a long press
+    if (!_longPressFired) {
+      uint32_t held = millis() - _touchStart;
+      int16_t dx = (int16_t)_lastX - (int16_t)_startX;
+      int16_t dy = (int16_t)_lastY - (int16_t)_startY;
+      evt.type = classify(dx, dy, held);
+      evt.x  = _lastX;  evt.y  = _lastY;
+      evt.dx = dx;      evt.dy = dy;
+    }
     _wasTouched = false;
-    Serial.printf("[touch] UP held=%lums delta=(%d,%d) at=(%u,%u) type=%u\n",
-                  (unsigned long)held, dx, dy, _lastX, _lastY, (unsigned)evt.type);
+    _longPressFired = false;
   }
 
   return evt;

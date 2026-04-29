@@ -3,7 +3,7 @@
 
 struct InputEvent {
   enum Type : uint8_t {
-    NONE, TAP, SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN, DRAG
+    NONE, TAP, SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN, DRAG, LONG_PRESS
   };
   Type     type = NONE;
   uint16_t x = 0, y = 0;

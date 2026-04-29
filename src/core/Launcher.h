@@ -27,11 +27,13 @@ private:
   int           _count   = 0;
   int           _current = 0;
   bool          _inGame  = false;
+  bool          _paused  = false;
   Game*         _active  = nullptr;
   bool          _needsRedraw = true;
 
   void drawCard();
   void drawDots();
   void drawArrows();
+  void drawPauseOverlay();
 };
 #endif

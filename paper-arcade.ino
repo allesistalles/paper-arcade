@@ -138,7 +138,9 @@ void loop() {
     // Don't forward the launch tap to the game — it would trigger a spurious
     // first-frame action (fire, jump, etc.). Once the game is running, the
     // user's next touch is theirs.
-    if (!justLaunched) {
+    // Also don't forward LONG_PRESS — it's consumed by the Launcher pause overlay.
+    bool isLongPress = (evt.type == InputEvent::LONG_PRESS);
+    if (!justLaunched && !isLongPress) {
       activeGame->update(evt);
     }
     if (activeGame->isDone() && evt.type == InputEvent::TAP && !justLaunched) {

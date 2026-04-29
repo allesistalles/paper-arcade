@@ -14,6 +14,7 @@ public:
 private:
   XPT2046_Touchscreen _touch;
   bool      _wasTouched = false;
+  bool      _longPressFired = false;
   uint16_t  _startX = 0, _startY = 0;
   uint16_t  _lastX  = 0, _lastY  = 0;
   uint32_t  _touchStart = 0;
