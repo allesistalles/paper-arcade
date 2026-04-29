@@ -40,6 +40,7 @@ public:
   void        end() override;
   const char* name()      override { return "2048"; }
   uint32_t    highScore() override { return _hiScore; }
+  uint32_t    score()     override { return _logic.score(); }
   bool        isDone()    override { return _done; }
 
 private:

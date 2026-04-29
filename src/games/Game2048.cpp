@@ -69,6 +69,7 @@ bool Game2048Logic::hasMoves() const {
 
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 
 static uint16_t tileColor(uint16_t v) {
   switch (v) {
@@ -114,56 +115,40 @@ void Game2048::draw() {
   _dirty = false;
 
   TFT_eSPI& s = *_tft;
-  uint16_t bg  = s.color24to16(Theme::BG);
-  uint16_t drk = s.color24to16(Theme::DARK);
-  uint16_t sec = s.color24to16(Theme::SECONDARY);
-  uint16_t txt = s.color24to16(Theme::TEXT);
-  uint16_t acc = s.color24to16(Theme::ACCENT);
-  uint16_t dim = s.color24to16(Theme::DIM);
 
-  s.fillScreen(bg);
+  if (_gameOver) {
+    drawGameOverOverlay(s, "2048", _logic.score(), Theme::G2048565);
+    return;
+  }
 
-  // Header
-  char buf[32];
-  snprintf(buf, sizeof(buf), "SCORE %lu", (unsigned long)_logic.score());
-  s.setTextColor(txt, bg);
-  s.drawString(buf, 4, 8, 2);
-  snprintf(buf, sizeof(buf), "HI %lu", (unsigned long)_hiScore);
-  int hw = s.textWidth(buf, 2);
-  s.drawString(buf, 240 - hw - 4, 8, 2);
+  s.fillScreen(Theme::BG565);
 
-  // Grid: 4×4 cells, CELL=54px, gap=3px → 4*54+5*3 = 231px, offset x=4, y=40
-  const int CELL = 54, GAP = 3, OX = 4, OY = 40;
-  s.fillRoundRect(OX - 3, OY - 3, 4*(CELL+GAP)+GAP, 4*(CELL+GAP)+GAP, 5, drk);
+  // Grid: CELL=54, GAP=3, OX=4, OY=62 (shifted from 40 to 62 = +22)
+  const int CELL = 54, GAP = 3, OX = 4, OY = 62;
+  s.fillRoundRect(OX - 3, OY - 3, 4 * (CELL + GAP) + GAP, 4 * (CELL + GAP) + GAP, 5, Theme::SEP565);
+
   for (int y = 0; y < 4; y++) {
     for (int x = 0; x < 4; x++) {
       int px = OX + GAP + x * (CELL + GAP);
       int py = OY + GAP + y * (CELL + GAP);
       uint16_t v = _logic.cell(x, y);
-      uint16_t col = v ? tileColor(v) : sec;
+      uint16_t col = v ? tileColor(v) : Theme::CARD565;
       s.fillRoundRect(px, py, CELL, CELL, 3, col);
       if (v) {
+        char buf[8];
         snprintf(buf, sizeof(buf), "%u", v);
-        s.setTextColor(txt, col);
-        int font = (v < 100) ? 4 : (v < 1000 ? 2 : 2);
+        s.setTextColor(Theme::TEXT565, col);
+        int font = (v < 1000) ? 4 : 2;
         int tw = s.textWidth(buf, font);
-        s.drawString(buf, px + (CELL - tw) / 2, py + CELL/2 - 10, font);
+        s.drawString(buf, px + (CELL - tw) / 2, py + CELL / 2 - 10, font);
       }
     }
   }
 
-  if (_gameOver) {
-    s.setTextColor(acc, bg);
-    s.fillRect(20, 265, 200, 50, bg);
-    int gw = s.textWidth("GAME OVER", 4);
-    s.drawString("GAME OVER", 120 - gw / 2, 268, 4);
-    s.setTextColor(txt, bg);
-    int tw = s.textWidth("TAP TO EXIT", 2);
-    s.drawString("TAP TO EXIT", 120 - tw / 2, 295, 2);
-  }
-
-  s.setTextColor(dim, bg);
-  s.drawString("swipe to move", 60, 310, 2);
+  // Swipe hint
+  s.setTextColor(Theme::MUTED565, Theme::BG565);
+  int hw = s.textWidth("swipe to move", 1);
+  s.drawString("swipe to move", 120 - hw / 2, 310, 1);
 }
 
 void Game2048::end() {}
