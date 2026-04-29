@@ -6,12 +6,13 @@
 void Breakout::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _tft = &tft; _scores = &scores;
   _hiScore = scores.getHighScore("breakout");
-  _done = false; _gameOver = false; _dirty = true;
+  _done = false; _gameOver = false; _dirty = true; _needsFullRedraw = true;
   _score = 0; _lives = 3;
   _remaining = ROWS * COLS;
   for (int i = 0; i < ROWS * COLS; i++) _bricks[i] = true;
   _bx = 120; _by = 220; _vx = 1.2f; _vy = -1.8f;
   _paddleX = 92;
+  _prevBx = 120; _prevBy = 220; _prevPaddleX = 92;
   _lastTick = millis();
 }
 
@@ -64,6 +65,8 @@ void Breakout::update(const InputEvent& input) {
         if (_bricks[idx]) {
           _bricks[idx] = false; _remaining--;
           _score += 10; _vy = -_vy;
+          // Immediately erase the destroyed brick — no full redraw needed
+          if (_tft) _tft->fillRect(col * (BRICK_W + 2), BRICK_TOP + row * BRICK_H, BRICK_W, BRICK_H - 2, Theme::BG565);
         }
       }
     }
@@ -86,36 +89,38 @@ void Breakout::draw() {
   TFT_eSPI& s = *_tft;
 
   if (_gameOver) {
-    bool won = (_remaining == 0);
-    drawGameOverOverlay(s, "BREAKOUT", _score, Theme::BREAKOUT565, won);
+    drawGameOverOverlay(s, "BREAKOUT", _score, Theme::BREAKOUT565, (_remaining == 0));
+    _needsFullRedraw = true;
     return;
   }
 
-  s.fillScreen(Theme::BG565);
-
-  // Bricks (BRICK_TOP=52 now)
   static const uint16_t ROW_COLS[6] = {
     Theme::DANGER565, Theme::MINES565, Theme::G2048565,
     Theme::FLAPPY565, Theme::SNAKE565, Theme::BREAKOUT565
   };
-  for (int r = 0; r < ROWS; r++) {
-    for (int c = 0; c < COLS; c++) {
-      if (!_bricks[r * COLS + c]) continue;
-      s.fillRect(c * (BRICK_W + 2), BRICK_TOP + r * BRICK_H, BRICK_W, BRICK_H - 2, ROW_COLS[r]);
-    }
+
+  if (_needsFullRedraw) {
+    s.fillRect(0, 22, 240, 298, Theme::BG565);
+    for (int r = 0; r < ROWS; r++)
+      for (int c = 0; c < COLS; c++)
+        if (_bricks[r * COLS + c])
+          s.fillRect(c * (BRICK_W + 2), BRICK_TOP + r * BRICK_H, BRICK_W, BRICK_H - 2, ROW_COLS[r]);
+    for (int i = 0; i < 3; i++)
+      s.fillCircle(108 + i * 14, 310, 4, Theme::BREAKOUT565);
+    _needsFullRedraw = false;
+    _prevBx = -99;  // force initial draw
   }
 
-  // Paddle
+  // Erase old ball and paddle
+  s.fillCircle(_prevBx, _prevBy, 6, Theme::BG565);
+  s.fillRect(_prevPaddleX, 295, PADDLE_W + 1, PADDLE_H, Theme::BG565);
+
+  // Draw new ball and paddle
+  s.fillCircle((int)_bx, (int)_by, 5, Theme::TEXT565);
   s.fillRoundRect(_paddleX, 295, PADDLE_W, PADDLE_H, 3, Theme::BREAKOUT565);
 
-  // Ball
-  s.fillCircle((int)_bx, (int)_by, 5, Theme::TEXT565);
-
-  // Lives dots at y=310
-  for (int i = 0; i < 3; i++) {
-    uint16_t col = (i < (int)_lives) ? Theme::BREAKOUT565 : Theme::SEP565;
-    s.fillCircle(108 + i * 14, 310, 4, col);
-  }
+  _prevBx = (int)_bx; _prevBy = (int)_by;
+  _prevPaddleX = _paddleX;
 }
 
 void Breakout::end() {}

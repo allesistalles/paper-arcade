@@ -121,7 +121,7 @@ void Game2048::draw() {
     return;
   }
 
-  s.fillScreen(Theme::BG565);
+  s.fillRect(0, 22, 240, 298, Theme::BG565);
 
   // Grid: CELL=54, GAP=3, OX=4, OY=62 (shifted from 40 to 62 = +22)
   const int CELL = 54, GAP = 3, OX = 4, OY = 62;

@@ -161,7 +161,7 @@ void PacMan::draw() {
     return;
   }
 
-  s.fillScreen(Theme::BG565);
+  s.fillRect(0, 22, 240, 298, Theme::BG565);
 
   // Maze (MAZE_Y = 48, safely below Launcher HUD at y=0..21)
   for (int y = 0; y < ROWS; y++) {

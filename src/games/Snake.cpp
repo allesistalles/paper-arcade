@@ -107,7 +107,7 @@ void Snake::draw() {
     return;
   }
 
-  s.fillScreen(Theme::BG565);
+  s.fillRect(0, 22, 240, 298, Theme::BG565);
 
   // Food — y shifted +22 so content stays below the Launcher's HUD strip
   Point f = _logic.foodPos();

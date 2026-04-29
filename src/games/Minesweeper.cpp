@@ -118,7 +118,7 @@ void Minesweeper::draw() {
     return;
   }
 
-  s.fillScreen(Theme::BG565);
+  s.fillRect(0, 22, 240, 298, Theme::BG565);
 
   static const uint16_t NUM_COLS[9] = {
     0x0000, Theme::ACCENT565, 0x07E0, Theme::DANGER565,

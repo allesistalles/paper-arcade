@@ -54,6 +54,10 @@ private:
   uint32_t      _hiScore = 0;
   bool          _done = false;
   bool          _dirty = true;
+  bool          _needsFullRedraw = true;  // full clear only on start/score change
   int16_t       _paddleTargetX = 90;
+  int16_t       _prevBx = 120, _prevBy = 160;
+  int16_t       _prevAx = 90,  _prevPx = 90;
+  uint8_t       _prevAScore = 0, _prevPScore = 0;
 };
 #endif

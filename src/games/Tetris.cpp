@@ -171,7 +171,7 @@ void Tetris::draw() {
     return;
   }
 
-  s.fillScreen(Theme::BG565);
+  s.fillRect(0, 22, 240, 298, Theme::BG565);
 
   // Board border
   s.drawRect(OFFX - 1, OFFY - 1,

@@ -7,7 +7,7 @@
 void SpaceInvaders::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _tft = &tft; _scores = &scores;
   _hiScore = scores.getHighScore("invaders");
-  _done = false; _gameOver = false; _dirty = true;
+  _done = false; _gameOver = false; _dirty = true; _needsFullRedraw = true;
   _score = 0; _lives = 3;
   _aliveCount = ROWS * COLS;
   for (int i = 0; i < ROWS * COLS; i++) _alive[i] = true;
@@ -139,6 +139,11 @@ void SpaceInvaders::update(const InputEvent& input) {
   _dirty = true;
 }
 
+// Previous bullet positions for erase-before-draw
+static int16_t sPrevBulX[3]    = {-1,-1,-1}, sPrevBulY[3]    = {-1,-1,-1};
+static int16_t sPrevInvBulX[2] = {-1,-1},    sPrevInvBulY[2] = {-1,-1};
+static int      sPrevPlayerX   = -1;
+
 void SpaceInvaders::draw() {
   if (!_dirty) return;
   _dirty = false;
@@ -146,51 +151,74 @@ void SpaceInvaders::draw() {
   TFT_eSPI& s = *_tft;
 
   if (_gameOver) {
-    bool won = (_aliveCount == 0);
-    drawGameOverOverlay(s, "INVADERS", _score, Theme::INVADERS565, won);
+    drawGameOverOverlay(s, "INVADERS", _score, Theme::INVADERS565, (_aliveCount == 0));
+    _needsFullRedraw = true;
     return;
   }
 
-  s.fillScreen(Theme::BG565);
-
-  // Invaders
   static const uint16_t ROW_COLS[4] = {
     Theme::DANGER565, Theme::MINES565, Theme::SNAKE565, Theme::TETRIS565
   };
+
+  if (_needsFullRedraw) {
+    s.fillRect(0, 22, 240, 298, Theme::BG565);
+    // Static elements
+    for (int i = 0; i < 3; i++)
+      s.fillCircle(108 + i * 14, 310, 4, Theme::INVADERS565);
+    s.setTextColor(Theme::SEP565, Theme::BG565);
+    s.drawString("<", 14, 290, 4);
+    s.drawString(">", 210, 290, 4);
+    s.drawString("FIRE", 98, 292, 2);
+    // Force redraws of tracked elements
+    sPrevPlayerX = -1;
+    for (int i = 0; i < MAX_BULLETS; i++) sPrevBulX[i] = -1;
+    for (int i = 0; i < MAX_INV_BULLETS; i++) sPrevInvBulX[i] = -1;
+    _needsFullRedraw = false;
+  }
+
+  // Invaders — only redraw on swarm march (tickSwarm sets dirty)
+  // Wipe old swarm area and redraw to handle movement
+  // Since swarm moves infrequently, a targeted redraw is fast enough
   for (int r = 0; r < ROWS; r++) {
     for (int c = 0; c < COLS; c++) {
-      if (!_alive[r * COLS + c]) continue;
       int ix = _swarmX + c * (INV_W + INV_GAP_X);
       int iy = _swarmY + r * (INV_H + INV_GAP_Y);
-      s.fillRect(ix, iy, INV_W, INV_H, ROW_COLS[r]);
-      s.fillRect(ix + 4, iy + 3, 3, 3, Theme::BG565);
-      s.fillRect(ix + 15, iy + 3, 3, 3, Theme::BG565);
+      if (_alive[r * COLS + c]) {
+        s.fillRect(ix, iy, INV_W, INV_H, ROW_COLS[r]);
+        s.fillRect(ix + 4, iy + 3, 3, 3, Theme::BG565);
+        s.fillRect(ix + 15, iy + 3, 3, 3, Theme::BG565);
+      }
     }
   }
 
-  // Player ship
+  // Player — erase old, draw new
+  if (sPrevPlayerX >= 0) {
+    s.fillRect(sPrevPlayerX, PLAYER_Y, PLAYER_W, 10, Theme::BG565);
+    s.fillRect(sPrevPlayerX + 9, PLAYER_Y - 5, 4, 5, Theme::BG565);
+  }
   s.fillRect(_playerX, PLAYER_Y, PLAYER_W, 10, Theme::INVADERS565);
   s.fillRect(_playerX + 9, PLAYER_Y - 5, 4, 5, Theme::INVADERS565);
+  sPrevPlayerX = _playerX;
 
-  // Bullets
-  for (int i = 0; i < MAX_BULLETS; i++)
-    if (_bullets[i].active)
+  // Player bullets — erase old position, draw new
+  for (int i = 0; i < MAX_BULLETS; i++) {
+    if (sPrevBulX[i] >= 0) s.fillRect(sPrevBulX[i], sPrevBulY[i], 2, 9, Theme::BG565);
+    if (_bullets[i].active) {
       s.fillRect(_bullets[i].x, _bullets[i].y, 2, 7, Theme::TEXT565);
-  for (int i = 0; i < MAX_INV_BULLETS; i++)
-    if (_invBullets[i].active)
-      s.fillRect(_invBullets[i].x, _invBullets[i].y, 2, 7, Theme::DANGER565);
-
-  // Lives dots at y=310
-  for (int i = 0; i < 3; i++) {
-    uint16_t col = (i < (int)_lives) ? Theme::INVADERS565 : Theme::SEP565;
-    s.fillCircle(108 + i * 14, 310, 4, col);
+      sPrevBulX[i] = _bullets[i].x; sPrevBulY[i] = _bullets[i].y;
+    } else {
+      sPrevBulX[i] = -1;
+    }
   }
-
-  // Control zone hints
-  s.setTextColor(Theme::SEP565, Theme::BG565);
-  s.drawString("<", 14, 290, 4);
-  s.drawString(">", 210, 290, 4);
-  s.drawString("FIRE", 98, 292, 2);
+  for (int i = 0; i < MAX_INV_BULLETS; i++) {
+    if (sPrevInvBulX[i] >= 0) s.fillRect(sPrevInvBulX[i], sPrevInvBulY[i], 2, 9, Theme::BG565);
+    if (_invBullets[i].active) {
+      s.fillRect(_invBullets[i].x, _invBullets[i].y, 2, 7, Theme::DANGER565);
+      sPrevInvBulX[i] = _invBullets[i].x; sPrevInvBulY[i] = _invBullets[i].y;
+    } else {
+      sPrevInvBulX[i] = -1;
+    }
+  }
 }
 
 void SpaceInvaders::end() {}

@@ -11,13 +11,14 @@ int FlappyBird::randGapY() {
 void FlappyBird::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _tft = &tft; _scores = &scores;
   _hiScore = scores.getHighScore("flappy");
-  _done = false; _gameOver = false; _dirty = true;
-  _score = 0; _birdY = 160; _vy = 0;
+  _done = false; _gameOver = false; _dirty = true; _needsFullRedraw = true;
+  _score = 0; _birdY = 160; _prevBirdY = 160; _vy = 0;
   srand(millis());
   for (int i = 0; i < PIPE_COUNT; i++) {
     _pipes[i].x = 240 + i * 100;
     _pipes[i].gapY = randGapY();
     _pipes[i].scored = false;
+    _prevPipeX[i] = _pipes[i].x;
   }
   _lastTick = millis();
 }
@@ -75,23 +76,40 @@ void FlappyBird::draw() {
 
   if (_gameOver) {
     drawGameOverOverlay(s, "FLAPPY", _score, Theme::FLAPPY565);
+    _needsFullRedraw = true;
     return;
   }
 
-  s.fillScreen(Theme::BG565);
-
-  // Pipes — full height, HUD composites on top
-  for (int i = 0; i < PIPE_COUNT; i++) {
-    Pipe& p = _pipes[i];
-    s.fillRect(p.x, 0,               PIPE_W, p.gapY,                     Theme::SNAKE565);
-    s.fillRect(p.x, p.gapY + GAP_H, PIPE_W, 320 - (p.gapY + GAP_H),    Theme::SNAKE565);
-    s.drawRect(p.x, 0,               PIPE_W, p.gapY,                     Theme::FLAPPY565);
-    s.drawRect(p.x, p.gapY + GAP_H, PIPE_W, 320 - (p.gapY + GAP_H),    Theme::FLAPPY565);
+  if (_needsFullRedraw) {
+    s.fillRect(0, 22, 240, 298, Theme::BG565);
+    _needsFullRedraw = false;
   }
 
-  // Bird
+  // Each pipe moved 2px left since last frame.
+  // Fill the 2px strip revealed on the left of the old position with BG.
+  // Fill the 2px strip now occupied on the right of the new position with pipe color.
+  for (int i = 0; i < PIPE_COUNT; i++) {
+    Pipe& p = _pipes[i];
+    int dx = _prevPipeX[i] - p.x;   // should be ~2
+    if (dx > 0) {
+      // Erase left edge of old pipe position
+      s.fillRect(_prevPipeX[i], 0, dx, p.gapY, Theme::BG565);
+      s.fillRect(_prevPipeX[i], p.gapY + GAP_H, dx, 320 - (p.gapY + GAP_H), Theme::BG565);
+    }
+    // Draw right edge of new pipe position
+    s.fillRect(p.x + PIPE_W - dx, 0, dx, p.gapY, Theme::SNAKE565);
+    s.fillRect(p.x + PIPE_W - dx, p.gapY + GAP_H, dx, 320 - (p.gapY + GAP_H), Theme::SNAKE565);
+    // Redraw pipe outlines
+    s.drawRect(p.x, 0, PIPE_W, p.gapY, Theme::FLAPPY565);
+    s.drawRect(p.x, p.gapY + GAP_H, PIPE_W, 320 - (p.gapY + GAP_H), Theme::FLAPPY565);
+    _prevPipeX[i] = p.x;
+  }
+
+  // Erase old bird, draw new bird
+  s.fillCircle(BIRD_X, (int)_prevBirdY, 9, Theme::BG565);
   s.fillCircle(BIRD_X, (int)_birdY, 8, Theme::FLAPPY565);
   s.fillCircle(BIRD_X + 3, (int)_birdY - 2, 2, Theme::BG565);
+  _prevBirdY = _birdY;
 }
 
 void FlappyBird::end() {}

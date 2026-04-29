@@ -31,6 +31,9 @@ private:
   float    _bx = 120, _by = 220;
   float    _vx = 1.2f, _vy = -1.8f;
   int      _paddleX = 92;          // left edge of paddle
+  int      _prevBx = 120, _prevBy = 220;
+  int      _prevPaddleX = 92;
+  bool     _needsFullRedraw = true;
   uint32_t _lastTick = 0;
   uint32_t _score = 0;
   uint32_t _hiScore = 0;

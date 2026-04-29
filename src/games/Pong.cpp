@@ -67,11 +67,13 @@ bool PongLogic::tick(uint32_t dt) {
 void Pong::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _tft = &tft; _scores = &scores;
   _hiScore = scores.getHighScore("pong");
-  _done = false;
-  _dirty = true;
+  _done = false; _dirty = true; _needsFullRedraw = true;
+  _prevAScore = 0; _prevPScore = 0;
   srand(millis());
   _logic.init(240, 320);
   _paddleTargetX = 90;
+  _prevBx = 120; _prevBy = 160;
+  _prevAx = 90;  _prevPx = 90;
   _lastTick = millis();
 }
 
@@ -103,32 +105,42 @@ void Pong::draw() {
   if (_done) {
     bool won = _logic.playerScore() >= PongLogic::WIN_SCORE;
     drawGameOverOverlay(s, "PONG", (uint32_t)_logic.playerScore() * 100, Theme::PONG565, won);
+    _needsFullRedraw = true;
     return;
   }
 
-  s.fillScreen(Theme::BG565);
+  uint8_t as = _logic.aiScore(), ps = _logic.playerScore();
+  bool scoreChanged = (as != _prevAScore || ps != _prevPScore);
 
-  // Centre dashed line
-  for (int x = 0; x < 240; x += 14)
-    s.drawFastHLine(x, 160, 8, Theme::SEP565);
+  if (_needsFullRedraw || scoreChanged) {
+    s.fillRect(0, 22, 240, 298, Theme::BG565);
+    for (int x = 0; x < 240; x += 14)
+      s.drawFastHLine(x, 160, 8, Theme::SEP565);
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%d", as);
+    s.setTextColor(Theme::MUTED565, Theme::BG565);
+    s.drawString(buf, 60 - s.textWidth(buf, 4) / 2, 130, 4);
+    snprintf(buf, sizeof(buf), "%d", ps);
+    s.setTextColor(Theme::TEXT565, Theme::BG565);
+    s.drawString(buf, 180 - s.textWidth(buf, 4) / 2, 130, 4);
+    _prevAScore = as; _prevPScore = ps;
+    _needsFullRedraw = false;
+    // force prev positions stale so next step draws fresh
+    _prevBx = -99; _prevAx = -99; _prevPx = -99;
+  }
 
-  // AI paddle (top, game colour)
-  s.fillRect(_logic.aiX(), PongLogic::AI_Y, PongLogic::PAD_W, PongLogic::PAD_H, Theme::PONG565);
-  // Player paddle (bottom, white)
+  // Erase old positions
+  s.fillCircle(_prevBx, _prevBy, PongLogic::BALL_R + 1, Theme::BG565);
+  s.fillRect(_prevAx, PongLogic::AI_Y,     PongLogic::PAD_W + 1, PongLogic::PAD_H, Theme::BG565);
+  s.fillRect(_prevPx, PongLogic::PLAYER_Y, PongLogic::PAD_W + 1, PongLogic::PAD_H, Theme::BG565);
+
+  // Draw new positions
+  s.fillRect(_logic.aiX(),     PongLogic::AI_Y,     PongLogic::PAD_W, PongLogic::PAD_H, Theme::PONG565);
   s.fillRect(_logic.playerX(), PongLogic::PLAYER_Y, PongLogic::PAD_W, PongLogic::PAD_H, Theme::TEXT565);
-  // Ball
   s.fillCircle(_logic.ballX(), _logic.ballY(), PongLogic::BALL_R, Theme::TEXT565);
 
-  // Scores centred
-  char buf[8];
-  snprintf(buf, sizeof(buf), "%d", _logic.aiScore());
-  s.setTextColor(Theme::MUTED565, Theme::BG565);
-  int aw = s.textWidth(buf, 4);
-  s.drawString(buf, 60 - aw / 2, 130, 4);
-  snprintf(buf, sizeof(buf), "%d", _logic.playerScore());
-  s.setTextColor(Theme::TEXT565, Theme::BG565);
-  int pw = s.textWidth(buf, 4);
-  s.drawString(buf, 180 - pw / 2, 130, 4);
+  _prevBx = _logic.ballX(); _prevBy = _logic.ballY();
+  _prevAx = _logic.aiX();   _prevPx = _logic.playerX();
 }
 
 void Pong::end() {

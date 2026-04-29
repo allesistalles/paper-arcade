@@ -46,6 +46,7 @@ private:
   bool   _done = false;
   bool   _gameOver = false;
   bool   _dirty = true;
+  bool   _needsFullRedraw = true;
 
   void shoot();
   void tickSwarm();

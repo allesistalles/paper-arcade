@@ -31,6 +31,9 @@ private:
   TFT_eSPI*     _tft = nullptr;
   ScoreManager* _scores = nullptr;
   float    _birdY = 160;
+  float    _prevBirdY = 160;
+  int      _prevPipeX[PIPE_COUNT] = {0};
+  bool     _needsFullRedraw = true;
   float    _vy    = 0;
   Pipe     _pipes[PIPE_COUNT];
   uint32_t _score = 0;
