@@ -7,21 +7,22 @@ InputManager::InputManager(uint8_t csPin, uint8_t irqPin) : _touch(csPin, irqPin
 void InputManager::begin(SPIClass& spi) {
   // Touch must use the VSPI bus (passed in) — separate from TFT's HSPI.
   _touch.begin(spi);
-  // Match the TFT's landscape orientation (rotation 1) so getPoint() returns
-  // coords aligned with the screen's X/Y axes.
-  _touch.setRotation(1);
+  // Match the TFT's portrait orientation (rotation 2 = USB-down) so getPoint()
+  // returns coords aligned with the screen's X/Y axes.
+  _touch.setRotation(2);
 }
 
+// Screen is 240w × 320h in portrait. mapX → 0..239, mapY → 0..319.
 uint16_t InputManager::mapX(uint16_t raw) {
   if (raw < 200) raw = 200;
   if (raw > 3900) raw = 3900;
-  return (uint32_t)(raw - 200) * 319 / 3700;
+  return (uint32_t)(raw - 200) * 239 / 3700;
 }
 
 uint16_t InputManager::mapY(uint16_t raw) {
   if (raw < 300) raw = 300;
   if (raw > 3800) raw = 3800;
-  return (uint32_t)(raw - 300) * 239 / 3500;
+  return (uint32_t)(raw - 300) * 319 / 3500;
 }
 
 InputEvent::Type InputManager::classify(int16_t dx, int16_t dy, uint32_t ms) {

@@ -120,19 +120,22 @@ void Snake::draw() {
     s.fillRect(body[i].x * CELL + 1, body[i].y * CELL + 1, CELL - 2, CELL - 2, c);
   }
 
-  // HUD line
+  // HUD strip at the bottom (y=290..320)
   char buf[32];
   snprintf(buf, sizeof(buf), "SCORE %lu", (unsigned long)_logic.score());
   s.setTextColor(text, bg);
-  s.drawString(buf, 4, 224, 2);
+  s.drawString(buf, 4, 296, 2);
   snprintf(buf, sizeof(buf), "HI %lu", (unsigned long)_hiScore);
-  s.drawString(buf, 240, 224, 2);
+  int hiW = s.textWidth(buf, 2);
+  s.drawString(buf, 240 - hiW - 4, 296, 2);
 
   if (_done) {
     s.setTextColor(accent, bg);
-    s.drawString("GAME OVER", 80, 90, 4);
+    int gW = s.textWidth("GAME OVER", 4);
+    s.drawString("GAME OVER", 120 - gW / 2, 130, 4);
     s.setTextColor(text, bg);
-    s.drawString("TAP TO EXIT", 90, 130, 2);
+    int tW = s.textWidth("TAP TO EXIT", 2);
+    s.drawString("TAP TO EXIT", 120 - tW / 2, 175, 2);
     _doneScreenShown = true;
   }
 }

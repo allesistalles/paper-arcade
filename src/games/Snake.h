@@ -46,7 +46,8 @@ public:
   bool        isDone()    override { return _done; }
 
 private:
-  static const uint8_t COLS = 20, ROWS = 15, CELL = 16;
+  // Portrait 240×320: 15 cols × 18 rows × 16 px = 240×288, HUD strip below
+  static const uint8_t COLS = 15, ROWS = 18, CELL = 16;
   SnakeLogic    _logic;
   TFT_eSPI*     _tft = nullptr;
   ScoreManager* _scores = nullptr;

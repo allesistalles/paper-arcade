@@ -51,9 +51,10 @@ bool checkOTAHold() {
 }
 
 void enterOTAMode() {
+  // Layout for portrait 240×320: center text horizontally
   tft.fillScreen(tft.color24to16(Theme::BG));
   tft.setTextColor(tft.color24to16(Theme::ACCENT), tft.color24to16(Theme::BG));
-  tft.drawString("OTA MODE", 90, 60, 4);
+  tft.drawString("OTA MODE", 50, 80, 4);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin();
@@ -62,17 +63,17 @@ void enterOTAMode() {
 
   tft.setTextColor(tft.color24to16(Theme::TEXT), tft.color24to16(Theme::BG));
   if (WiFi.status() == WL_CONNECTED) {
-    tft.drawString(WiFi.localIP().toString(), 70, 120, 2);
+    tft.drawString(WiFi.localIP().toString(), 30, 150, 2);
     ArduinoOTA.setHostname("paper-arcade");
     ArduinoOTA.begin();
     tft.setTextColor(tft.color24to16(Theme::DIM), tft.color24to16(Theme::BG));
-    tft.drawString("Ready for upload", 70, 150, 2);
+    tft.drawString("Ready for upload", 30, 180, 2);
     while (true) ArduinoOTA.handle();
   } else {
     tft.setTextColor(tft.color24to16(Theme::ACCENT), tft.color24to16(Theme::BG));
-    tft.drawString("WiFi failed", 90, 120, 2);
+    tft.drawString("WiFi failed", 50, 150, 2);
     tft.setTextColor(tft.color24to16(Theme::DIM), tft.color24to16(Theme::BG));
-    tft.drawString("Set creds via Serial first time", 35, 150, 2);
+    tft.drawString("Set creds via Serial", 25, 180, 2);
     delay(3000);
     ESP.restart();
   }
@@ -85,14 +86,15 @@ void setup() {
 
   tft.init();
   tft.invertDisplay(true);   // CYD ILI9341_2 panel ships with inverted polarity
-  tft.setRotation(1);
+  tft.setRotation(2);        // portrait, USB plug at bottom (240w x 320h)
   tft.fillScreen(tft.color24to16(Theme::BG));
 
   // Bring up the touch VSPI bus before any touched() probe is called.
   touchSPI.begin(TOUCH_SCK, TOUCH_MISO, TOUCH_MOSI, TOUCH_CS_PIN);
 
   tft.setTextColor(tft.color24to16(Theme::ACCENT), tft.color24to16(Theme::BG));
-  tft.drawString("PAPER ARCADE", 50, 100, 4);
+  tft.drawString("PAPER", 65, 130, 6);
+  tft.drawString("ARCADE", 60, 180, 6);
   delay(800);
 
   if (checkOTAHold()) enterOTAMode();
