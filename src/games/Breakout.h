@@ -13,6 +13,7 @@ public:
   void        end() override;
   const char* name()      override { return "BREAKOUT"; }
   uint32_t    highScore() override { return _hiScore; }
+  uint32_t    score()     override { return _score; }
   bool        isDone()    override { return _done; }
 
 private:
@@ -20,7 +21,7 @@ private:
   static const int COLS = 8, ROWS = 6;
   static const int BRICK_W = 28, BRICK_H = 14;
   static const int PADDLE_W = 56, PADDLE_H = 8;
-  static const int BRICK_TOP = 30;  // y offset for first brick row
+  static const int BRICK_TOP = 52;  // y offset for first brick row
 
   TFT_eSPI*     _tft = nullptr;
   ScoreManager* _scores = nullptr;
