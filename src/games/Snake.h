@@ -43,6 +43,7 @@ public:
   void        end() override;
   const char* name()      override { return "SNAKE"; }
   uint32_t    highScore() override { return _hiScore; }
+  uint32_t    score()     override { return _logic.score(); }
   bool        isDone()    override { return _done; }
 
 private:
@@ -55,6 +56,5 @@ private:
   uint32_t      _hiScore = 0;
   bool          _done = false;
   bool          _dirty = true;       // redraw the whole screen on next draw()
-  bool          _doneScreenShown = false;
 };
 #endif
