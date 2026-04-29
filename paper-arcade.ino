@@ -21,6 +21,9 @@
 #include "src/games/Game2048.h"
 #include "src/games/Breakout.h"
 #include "src/games/FlappyBird.h"
+#include "src/games/Tetris.h"
+#include "src/games/SpaceInvaders.h"
+#include "src/games/PacMan.h"
 
 // CYD pin map:
 //   TFT (HSPI):   MOSI=13 MISO=12 SCK=14 CS=15 DC=2 BL=21
@@ -122,6 +125,9 @@ void setup() {
   launcher.addGame(new Game2048());
   launcher.addGame(new Breakout());
   launcher.addGame(new FlappyBird());
+  launcher.addGame(new Tetris());
+  launcher.addGame(new SpaceInvaders());
+  launcher.addGame(new PacMan());
 
   launcher.begin(tft, assets, scores);
 }
