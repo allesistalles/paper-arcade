@@ -38,6 +38,7 @@ public:
   void        end() override;
   const char* name()      override { return "SIMON"; }
   uint32_t    highScore() override { return _hiScore; }
+  uint32_t    score()     override { return (uint32_t)_logic.score(); }
   bool        isDone()    override { return _done; }
 
 private:

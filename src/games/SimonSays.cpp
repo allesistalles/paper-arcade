@@ -29,6 +29,7 @@ bool SimonLogic::advanceIfRoundComplete() {
 
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 
 // Portrait 240x320 layout:
 //   Q0 top-left    (x:0..119,  y:0..159)   — red
@@ -88,7 +89,10 @@ void SimonSays::update(const InputEvent& input) {
   }
 
   if (_phase == FAIL && input.type == InputEvent::TAP && now - _phaseStart > 500) {
+    _scores->setHighScore("simon", (uint32_t)_logic.score());
+    _hiScore = _scores->getHighScore("simon");
     _done = true;
+    _dirty = true;
   }
 }
 
@@ -97,7 +101,13 @@ void SimonSays::draw() {
   _dirty = false;
 
   TFT_eSPI& s = *_tft;
-  // Draw 4 quadrants
+
+  if (_done || _phase == FAIL) {
+    drawGameOverOverlay(s, "SIMON", (uint32_t)_logic.score(), Theme::SIMON565);
+    return;
+  }
+
+  // Draw 4 quadrants — full screen, HUD composites on top
   for (int8_t i = 0; i < 4; i++) {
     int qx = (i % 2) * 120;
     int qy = (i / 2) * 160;
@@ -105,23 +115,13 @@ void SimonSays::draw() {
     s.fillRect(qx + 2, qy + 2, 116, 156, col);
   }
 
-  // Score circle in the center
-  s.fillCircle(120, 160, 28, s.color24to16(Theme::BG));
+  // Score in centre circle
+  s.fillCircle(120, 160, 28, Theme::BG565);
   char buf[8];
   snprintf(buf, sizeof(buf), "%d", _logic.score());
-  s.setTextColor(s.color24to16(Theme::TEXT), s.color24to16(Theme::BG));
+  s.setTextColor(Theme::TEXT565, Theme::BG565);
   int sw = s.textWidth(buf, 4);
   s.drawString(buf, 120 - sw / 2, 150, 4);
-
-  if (_phase == FAIL) {
-    s.fillRect(30, 120, 180, 80, s.color24to16(Theme::BG));
-    s.setTextColor(s.color24to16(Theme::ACCENT), s.color24to16(Theme::BG));
-    int gw = s.textWidth("WRONG!", 4);
-    s.drawString("WRONG!", 120 - gw / 2, 130, 4);
-    s.setTextColor(s.color24to16(Theme::TEXT), s.color24to16(Theme::BG));
-    int tw = s.textWidth("TAP TO EXIT", 2);
-    s.drawString("TAP TO EXIT", 120 - tw / 2, 168, 2);
-  }
 }
 
 void SimonSays::end() {}
