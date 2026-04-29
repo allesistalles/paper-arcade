@@ -13,8 +13,14 @@
 #include "src/core/Launcher.h"
 #include "src/ui/Theme.h"
 
-// ---- Game includes (uncomment as built) ----
+// ---- Game includes ----
 #include "src/games/Snake.h"
+#include "src/games/Pong.h"
+#include "src/games/SimonSays.h"
+#include "src/games/Minesweeper.h"
+#include "src/games/Game2048.h"
+#include "src/games/Breakout.h"
+#include "src/games/FlappyBird.h"
 
 // CYD pin map:
 //   TFT (HSPI):   MOSI=13 MISO=12 SCK=14 CS=15 DC=2 BL=21
@@ -108,8 +114,14 @@ void setup() {
   }
   scores.begin();
 
-  // ---- Game registry (uncomment as each game is built) ----
+  // ---- Game registry ----
   launcher.addGame(new Snake());
+  launcher.addGame(new Pong());
+  launcher.addGame(new SimonSays());
+  launcher.addGame(new Minesweeper());
+  launcher.addGame(new Game2048());
+  launcher.addGame(new Breakout());
+  launcher.addGame(new FlappyBird());
 
   launcher.begin(tft, assets, scores);
 }
