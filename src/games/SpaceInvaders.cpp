@@ -1,6 +1,7 @@
 #include "SpaceInvaders.h"
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 #include <cstdlib>
 
 void SpaceInvaders::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
@@ -10,7 +11,7 @@ void SpaceInvaders::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _score = 0; _lives = 3;
   _aliveCount = ROWS * COLS;
   for (int i = 0; i < ROWS * COLS; i++) _alive[i] = true;
-  _swarmX = 4; _swarmY = 25;
+  _swarmX = 4; _swarmY = 35;
   _swarmDir = 1; _swarmStepMs = 700;
   _playerX = 108;
   for (int i = 0; i < MAX_BULLETS; i++) _bullets[i].active = false;
@@ -143,64 +144,53 @@ void SpaceInvaders::draw() {
   _dirty = false;
 
   TFT_eSPI& s = *_tft;
-  uint16_t bg  = s.color24to16(Theme::BG);
-  uint16_t acc = s.color24to16(Theme::ACCENT);
-  uint16_t dim = s.color24to16(Theme::DIM);
-  uint16_t txt = s.color24to16(Theme::TEXT);
 
-  s.fillScreen(bg);
+  if (_gameOver) {
+    bool won = (_aliveCount == 0);
+    drawGameOverOverlay(s, "INVADERS", _score, Theme::INVADERS565, won);
+    return;
+  }
 
-  static const uint16_t ROW_COLS[4] = { 0xF800, 0xFD20, 0x07E0, 0x07FF };
+  s.fillScreen(Theme::BG565);
+
+  // Invaders
+  static const uint16_t ROW_COLS[4] = {
+    Theme::DANGER565, Theme::MINES565, Theme::SNAKE565, Theme::TETRIS565
+  };
   for (int r = 0; r < ROWS; r++) {
     for (int c = 0; c < COLS; c++) {
       if (!_alive[r * COLS + c]) continue;
       int ix = _swarmX + c * (INV_W + INV_GAP_X);
       int iy = _swarmY + r * (INV_H + INV_GAP_Y);
-      uint16_t col = ROW_COLS[r];
-      s.fillRect(ix, iy, INV_W, INV_H, col);
-      // Simple eye-like detail
-      s.fillRect(ix + 4, iy + 3, 3, 3, 0x0000);
-      s.fillRect(ix + 15, iy + 3, 3, 3, 0x0000);
+      s.fillRect(ix, iy, INV_W, INV_H, ROW_COLS[r]);
+      s.fillRect(ix + 4, iy + 3, 3, 3, Theme::BG565);
+      s.fillRect(ix + 15, iy + 3, 3, 3, Theme::BG565);
     }
   }
 
   // Player ship
-  s.fillRect(_playerX, PLAYER_Y, PLAYER_W, 10, dim);
-  s.fillRect(_playerX + 10, PLAYER_Y - 5, 4, 5, dim);
+  s.fillRect(_playerX, PLAYER_Y, PLAYER_W, 10, Theme::INVADERS565);
+  s.fillRect(_playerX + 9, PLAYER_Y - 5, 4, 5, Theme::INVADERS565);
 
-  // Player bullets
+  // Bullets
   for (int i = 0; i < MAX_BULLETS; i++)
     if (_bullets[i].active)
-      s.fillRect(_bullets[i].x, _bullets[i].y, 2, 7, txt);
+      s.fillRect(_bullets[i].x, _bullets[i].y, 2, 7, Theme::TEXT565);
   for (int i = 0; i < MAX_INV_BULLETS; i++)
     if (_invBullets[i].active)
-      s.fillRect(_invBullets[i].x, _invBullets[i].y, 2, 7, acc);
+      s.fillRect(_invBullets[i].x, _invBullets[i].y, 2, 7, Theme::DANGER565);
 
-  // HUD
-  char buf[32];
-  s.setTextColor(txt, bg);
-  snprintf(buf, sizeof(buf), "%lu", (unsigned long)_score);
-  s.drawString(buf, 4, 4, 2);
-  snprintf(buf, sizeof(buf), "LIVES %d", _lives);
-  int lw = s.textWidth(buf, 2);
-  s.drawString(buf, 240 - lw - 4, 4, 2);
+  // Lives dots at y=310
+  for (int i = 0; i < 3; i++) {
+    uint16_t col = (i < (int)_lives) ? Theme::INVADERS565 : Theme::SEP565;
+    s.fillCircle(108 + i * 14, 310, 4, col);
+  }
 
-  // Control hints
-  s.setTextColor(s.color24to16(0x1a1040), bg);
+  // Control zone hints
+  s.setTextColor(Theme::SEP565, Theme::BG565);
   s.drawString("<", 14, 290, 4);
   s.drawString(">", 210, 290, 4);
   s.drawString("FIRE", 98, 292, 2);
-
-  if (_gameOver) {
-    s.fillRect(20, 120, 200, 70, bg);
-    s.setTextColor(acc, bg);
-    const char* msg = (_aliveCount == 0) ? "VICTORY!" : "GAME OVER";
-    int gw = s.textWidth(msg, 4);
-    s.drawString(msg, 120 - gw / 2, 128, 4);
-    s.setTextColor(txt, bg);
-    int tw = s.textWidth("TAP TO EXIT", 2);
-    s.drawString("TAP TO EXIT", 120 - tw / 2, 168, 2);
-  }
 }
 
 void SpaceInvaders::end() {}
