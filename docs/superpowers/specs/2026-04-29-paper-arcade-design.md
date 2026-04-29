@@ -41,7 +41,8 @@ A handheld retro arcade device built on the ESP32 CYD (ESP32-2432S028). Ten clas
 
 **Synthwave** — deep navy/purple backgrounds (`#0d0221`), hot pink (`#f72585`) and violet (`#7209b7`) accents, white text. Applied to the launcher, menus, game HUDs, and score screens. Each game's gameplay area follows its own classic color palette (e.g. green snake, colorful Tetris blocks).
 
-Theme constants live in `src/ui/Theme.h`:
+Theme constants live in `src/ui/Theme.h`. Stored as 24-bit RGB for readability; convert to RGB565 at call sites via `tft.color24to16(Theme::ACCENT)` or pre-compute with `((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)`.
+
 ```cpp
 namespace Theme {
   const uint32_t BG        = 0x0d0221;
