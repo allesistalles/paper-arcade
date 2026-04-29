@@ -12,6 +12,9 @@ void Launcher::addGame(Game* g) {
 }
 
 Game* Launcher::update(const InputEvent& evt) {
+  // Must return _active on every in-game frame (even on NONE) — paper-arcade.ino's
+  // launch-tap suppression depends on launcher.update() consistently signaling
+  // in-game state via a non-null return.
   if (_inGame) return _active;
   if (_count == 0) return nullptr;
 

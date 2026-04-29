@@ -6,7 +6,8 @@ InputManager::InputManager(uint8_t csPin) : _touch(csPin) {}
 
 void InputManager::begin() {
   _touch.begin();
-  _touch.setRotation(1);
+  // Don't call _touch.setRotation() — mapX/mapY translate raw XPT2046 coords
+  // (200..3900, 300..3800) into 320x240 landscape screen coords ourselves.
 }
 
 uint16_t InputManager::mapX(uint16_t raw) {

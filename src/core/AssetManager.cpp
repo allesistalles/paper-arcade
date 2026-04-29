@@ -1,8 +1,8 @@
 #include "AssetManager.h"
 #ifndef NATIVE_TEST
 
-bool AssetManager::begin(uint8_t sdCsPin) {
-  return SD.begin(sdCsPin);
+bool AssetManager::begin(uint8_t sdCsPin, SPIClass& spi) {
+  return SD.begin(sdCsPin, spi);
 }
 
 int AssetManager::findSlot(const char* key) {

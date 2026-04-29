@@ -29,6 +29,10 @@ Launcher      launcher;
 Game*         activeGame = nullptr;
 Game*         prevActiveGame = nullptr;   // for launch-tap suppression
 
+// CYD shares HSPI bus across TFT, touch, and SD card.
+// SD requires its own SPIClass instance bound to the same physical pins.
+SPIClass sdSPI(HSPI);
+
 bool checkOTAHold() {
   XPT2046_Touchscreen probe(TOUCH_CS_PIN);
   probe.begin();
@@ -61,7 +65,9 @@ void enterOTAMode() {
   } else {
     tft.setTextColor(tft.color24to16(Theme::ACCENT), tft.color24to16(Theme::BG));
     tft.drawString("WiFi failed", 90, 120, 2);
-    delay(2000);
+    tft.setTextColor(tft.color24to16(Theme::DIM), tft.color24to16(Theme::BG));
+    tft.drawString("Set creds via Serial first time", 35, 150, 2);
+    delay(3000);
     ESP.restart();
   }
 }
@@ -82,8 +88,11 @@ void setup() {
   if (checkOTAHold()) enterOTAMode();
 
   input.begin();
-  SPI.begin();
-  assets.begin(SD_CS_PIN);
+  // CYD: TFT/touch share bus via TFT_eSPI's internal SPI; SD needs explicit HSPI bind.
+  sdSPI.begin(/*SCK=*/14, /*MISO=*/12, /*MOSI=*/13, /*SS=*/SD_CS_PIN);
+  if (!assets.begin(SD_CS_PIN, sdSPI)) {
+    Serial.println("SD init failed (continuing without SD assets)");
+  }
   scores.begin();
 
   // ---- Game registry (uncomment as each game is built) ----

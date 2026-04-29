@@ -2,6 +2,7 @@
 #ifndef NATIVE_TEST
 #include <TFT_eSPI.h>
 #include <SD.h>
+#include <SPI.h>
 #include <cstring>
 
 // LRU cache of 4 RGB565 BMP sprites loaded from SD.
@@ -10,7 +11,7 @@ class AssetManager {
 public:
   static const int CACHE_SIZE = 4;
 
-  bool begin(uint8_t sdCsPin);
+  bool begin(uint8_t sdCsPin, SPIClass& spi);
 
   // "snake/apple" → /sprites/snake/apple.bmp
   // Returns nullptr if file missing or invalid.
