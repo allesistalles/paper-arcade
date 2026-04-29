@@ -2,28 +2,33 @@
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
 
-// Portrait 240×320 grid layout:
-//   Header:  y=0..44   — title
-//   Grid:    y=46..320 — 2 cols × 4 rows, cell 120×68px
-//   Pause overlay appears on LONG_PRESS while in-game
+// Row layout: header=24px + divider=1px + 10×28px rows + footer=15px = 320px exact
+static const int ROW_H  = 28;
+static const int ROW_Y0 = 25;   // y of first row top edge (0..24 = header)
+static const int HUD_H  = 22;   // height of in-game HUD strip
 
-static const uint16_t GAME_COLORS[] = {
-  0x07E0,  // Snake    — green
-  0x4E5E,  // Pong     — cyan (DIM)
-  0xFFFF,  // Simon    — white
-  0xF800,  // Mines    — red
-  0xFC60,  // 2048     — orange
-  0xF94B,  // Breakout — pink (ACCENT)
-  0xFFE0,  // Flappy   — yellow
-  0x07FF,  // slot 8   — aqua
-  0x780F,  // slot 9   — purple
-  0xFE40,  // slot 10  — gold
+// Per-game accent colours in registration order
+static const uint16_t GAME_COLORS[10] = {
+  Theme::SNAKE565,    // 0 Snake
+  Theme::PONG565,     // 1 Pong
+  Theme::SIMON565,    // 2 Simon
+  Theme::MINES565,    // 3 Minesweeper
+  Theme::G2048565,    // 4 2048
+  Theme::BREAKOUT565, // 5 Breakout
+  Theme::FLAPPY565,   // 6 Flappy Bird
+  Theme::TETRIS565,   // 7 Tetris
+  Theme::INVADERS565, // 8 Space Invaders
+  Theme::PACMAN565,   // 9 Pac-Man
 };
+
+uint16_t Launcher::gameAccentColor(int idx) const {
+  if (idx < 0 || idx >= 10) return Theme::ACCENT565;
+  return GAME_COLORS[idx];
+}
 
 void Launcher::begin(TFT_eSPI& tft, AssetManager& assets, ScoreManager& scores) {
   _tft = &tft; _assets = &assets; _scores = &scores;
   _needsRedraw = true;
-  _paused = false;
 }
 
 void Launcher::addGame(Game* g) {
@@ -31,46 +36,49 @@ void Launcher::addGame(Game* g) {
 }
 
 Game* Launcher::update(const InputEvent& evt) {
-  // Must return _active on every in-game frame — launch-tap suppression
-  // in paper-arcade.ino depends on this consistent non-null return.
+  // Always return _active while in-game so main loop can route input.
   if (_inGame) {
+    // HUD strip tap (y < HUD_H) → toggle pause
+    if (evt.type == InputEvent::TAP && evt.y < HUD_H) {
+      _paused = !_paused;
+      _needsRedraw = true;
+      return _active;
+    }
+    // Long-press anywhere → pause
     if (evt.type == InputEvent::LONG_PRESS) {
-      // Show pause overlay
       _paused = true;
       _needsRedraw = true;
       return _active;
     }
+    // Pause modal interaction
     if (_paused) {
       if (evt.type == InputEvent::TAP) {
-        if (evt.y > 160 && evt.y < 220) {
-          // Bottom half of overlay = QUIT
-          returnToMenu();
-          return nullptr;
-        } else {
-          // Top half = RESUME
+        if (evt.y >= 130 && evt.y <= 162) {
+          // RESUME
           _paused = false;
           _needsRedraw = false;
+        } else if (evt.y >= 170 && evt.y <= 202) {
+          // QUIT
+          returnToMenu();
+          return nullptr;
         }
       }
       return _active;
     }
     return _active;
   }
+
   if (_count == 0) return nullptr;
 
   if (evt.type == InputEvent::TAP) {
-    // Map tap to grid cell
-    int col = evt.x / 120;
-    int row = (int)(evt.y - 46) / 68;
-    if (col >= 0 && col < 2 && row >= 0 && row < 4) {
-      int idx = row * 2 + col;
-      if (idx < _count) {
-        _active = _games[idx];
-        _inGame = true;
-        _paused = false;
-        _active->begin(*_tft, *_assets, *_scores);
-        return _active;
-      }
+    int row = (int)(evt.y - ROW_Y0) / ROW_H;
+    if (evt.y >= ROW_Y0 && row >= 0 && row < _count) {
+      _active    = _games[row];
+      _activeIdx = row;
+      _inGame    = true;
+      _paused    = false;
+      _active->begin(*_tft, *_assets, *_scores);
+      return _active;
     }
   }
   return nullptr;
@@ -79,121 +87,121 @@ Game* Launcher::update(const InputEvent& evt) {
 void Launcher::draw() {
   if (_inGame) {
     if (_active) _active->draw();
+    drawHUD();
     if (_paused) drawPauseOverlay();
     return;
   }
   if (!_needsRedraw) return;
   _needsRedraw = false;
+  drawHomepage();
+}
 
+void Launcher::drawHomepage() {
   TFT_eSPI& t = *_tft;
-  uint16_t bg  = t.color24to16(Theme::BG);
-  uint16_t acc = t.color24to16(Theme::ACCENT);
-  uint16_t sec = t.color24to16(Theme::SECONDARY);
-  uint16_t drk = t.color24to16(Theme::DARK);
-  uint16_t txt = t.color24to16(Theme::TEXT);
-  uint16_t dim = t.color24to16(Theme::DIM);
+  t.fillScreen(Theme::BG565);
 
-  t.fillScreen(bg);
+  // Header
+  t.setTextColor(Theme::TEXT565, Theme::BG565);
+  t.drawString("PAPER ARCADE", 8, 6, 2);
+  t.setTextColor(Theme::MUTED565, Theme::BG565);
+  char countBuf[12];
+  snprintf(countBuf, sizeof(countBuf), "%d GAMES", _count);
+  int cw = t.textWidth(countBuf, 1);
+  t.drawString(countBuf, 232 - cw, 8, 1);
+  // Blue divider
+  t.drawFastHLine(0, 23, 240, Theme::ACCENT565);
 
-  // ── Header ─────────────────────────────────────────────────────
-  t.fillRect(0, 0, 240, 44, drk);
-  // "PAPER" left, "ARCADE" right — both in their accent colours
-  t.setTextColor(acc, drk);
-  t.drawString("PAPER", 8, 8, 4);
-  t.setTextColor(sec, drk);
-  int aw = t.textWidth("ARCADE", 4);
-  t.drawString("ARCADE", 236 - aw, 8, 4);
-  // Neon divider line
-  t.drawFastHLine(0, 43, 240, acc);
-  t.drawFastHLine(0, 44, 240, sec);
+  // Game rows
+  for (int i = 0; i < _count; i++) {
+    int rowY = ROW_Y0 + i * ROW_H;
+    uint16_t gc = gameAccentColor(i);
 
-  // ── Game grid ──────────────────────────────────────────────────
-  for (int i = 0; i < 8; i++) {
-    int col = i % 2;
-    int row = i / 2;
-    int x   = col * 120;
-    int y   = 46 + row * 68;
+    // Game name in its accent colour
+    t.setTextColor(gc, Theme::BG565);
+    t.drawString(_games[i]->name(), 8, rowY + 4, 4);
 
-    if (i < _count) {
-      Game* g = _games[i];
-      uint16_t gc = GAME_COLORS[i % 10];
-
-      // Card background
-      t.fillRect(x + 2, y + 2, 116, 64, drk);
-      // Coloured top accent bar
-      t.fillRect(x + 2, y + 2, 116, 5, gc);
-      // Card border
-      t.drawRect(x + 1, y + 1, 118, 66, gc);
-
-      // Game name
-      t.setTextColor(gc, drk);
-      int nw = t.textWidth(g->name(), 2);
-      t.drawString(g->name(), x + 60 - nw / 2, y + 14, 2);
-
-      // High score
-      char buf[20];
-      snprintf(buf, sizeof(buf), "HI:%lu", (unsigned long)g->highScore());
-      t.setTextColor(dim, drk);
-      int hw = t.textWidth(buf, 2);
-      t.drawString(buf, x + 60 - hw / 2, y + 38, 2);
-
-      // "TAP" hint if score is 0
-      if (g->highScore() == 0) {
-        t.setTextColor(t.color24to16(0x2d2050), drk);
-        int tw = t.textWidth("TAP", 1);
-        t.drawString("TAP", x + 60 - tw / 2, y + 56, 1);
-      }
+    // Score: white if > 0, muted "--" if 0
+    uint32_t hi = _games[i]->highScore();
+    char buf[16];
+    if (hi > 0) {
+      snprintf(buf, sizeof(buf), "%lu", (unsigned long)hi);
+      t.setTextColor(Theme::TEXT565, Theme::BG565);
     } else {
-      // Empty slot — subtle dashed border
-      t.drawRect(x + 1, y + 1, 118, 66, t.color24to16(0x1a1030));
-      t.setTextColor(t.color24to16(0x1a1030), bg);
-      t.drawString("+", x + 54, y + 22, 4);
+      snprintf(buf, sizeof(buf), "--");
+      t.setTextColor(Theme::MUTED565, Theme::BG565);
     }
+    int bw = t.textWidth(buf, 2);
+    t.drawString(buf, 232 - bw, rowY + 7, 2);
+
+    // Row separator
+    t.drawFastHLine(0, rowY + ROW_H - 1, 240, Theme::SEP565);
   }
 
-  // Bottom hint
-  t.setTextColor(t.color24to16(0x2d2050), bg);
-  int hintW = t.textWidth("hold = pause", 1);
-  t.drawString("hold = pause", 120 - hintW / 2, 314, 1);
+  // Footer hint
+  t.setTextColor(Theme::MUTED565, Theme::BG565);
+  int fw = t.textWidth("TAP || TO PAUSE", 1);
+  t.drawString("TAP || TO PAUSE", 120 - fw / 2, 308, 1);
+}
+
+void Launcher::drawHUD() {
+  if (!_active || !_inGame) return;
+  TFT_eSPI& t = *_tft;
+  uint16_t gc = gameAccentColor(_activeIdx);
+
+  // Clear HUD zone
+  t.fillRect(0, 0, 240, HUD_H, Theme::BG565);
+
+  // Game name in accent colour
+  t.setTextColor(gc, Theme::BG565);
+  t.drawString(_active->name(), 6, 5, 2);
+
+  // Live score in white
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%lu", (unsigned long)_active->score());
+  t.setTextColor(Theme::TEXT565, Theme::BG565);
+  int sw = t.textWidth(buf, 2);
+  t.drawString(buf, 200 - sw, 5, 2);
+
+  // Pause icon "||" in muted
+  t.setTextColor(Theme::MUTED565, Theme::BG565);
+  t.drawString("||", 218, 5, 2);
+
+  // Accent underline
+  t.drawFastHLine(0, HUD_H - 2, 240, gc);
 }
 
 void Launcher::drawPauseOverlay() {
   TFT_eSPI& t = *_tft;
-  uint16_t acc = t.color24to16(Theme::ACCENT);
-  uint16_t bg  = t.color24to16(Theme::BG);
-  uint16_t drk = t.color24to16(Theme::DARK);
-  uint16_t txt = t.color24to16(Theme::TEXT);
-  uint16_t dim = t.color24to16(Theme::DIM);
+  // Dark fill below HUD
+  t.fillRect(0, HUD_H, 240, 320 - HUD_H, Theme::CARD565);
 
-  // Semi-transparent overlay: just a dark rounded rect in the centre
-  t.fillRoundRect(20, 100, 200, 140, 10, drk);
-  t.drawRoundRect(20, 100, 200, 140, 10, acc);
+  // Modal card
+  t.fillRoundRect(30, 100, 180, 110, 8, Theme::CARD565);
+  t.drawRoundRect(30, 100, 180, 110, 8, Theme::ACCENT565);
 
-  t.setTextColor(acc, drk);
-  int pw = t.textWidth("PAUSED", 4);
-  t.drawString("PAUSED", 120 - pw / 2, 112, 4);
+  // "PAUSED"
+  t.setTextColor(Theme::MUTED565, Theme::CARD565);
+  int pw = t.textWidth("PAUSED", 1);
+  t.drawString("PAUSED", 120 - pw / 2, 113, 1);
 
-  // Resume button (top half of box)
-  t.fillRoundRect(35, 148, 170, 36, 6, t.color24to16(Theme::SECONDARY));
-  t.setTextColor(txt, t.color24to16(Theme::SECONDARY));
+  // RESUME button
+  t.fillRoundRect(46, 130, 148, 32, 5, Theme::ACCENT565);
+  t.setTextColor(Theme::TEXT565, Theme::ACCENT565);
   int rw = t.textWidth("RESUME", 2);
-  t.drawString("RESUME", 120 - rw / 2, 160, 2);
+  t.drawString("RESUME", 120 - rw / 2, 139, 2);
 
-  // Quit button (bottom half)
-  t.fillRoundRect(35, 192, 170, 36, 6, t.color24to16(0x500010));
-  t.setTextColor(acc, t.color24to16(0x500010));
+  // QUIT button
+  t.drawRoundRect(46, 170, 148, 32, 5, Theme::SEP565);
+  t.setTextColor(Theme::DANGER565, Theme::CARD565);
   int qw = t.textWidth("QUIT TO MENU", 2);
-  t.drawString("QUIT TO MENU", 120 - qw / 2, 204, 2);
+  t.drawString("QUIT TO MENU", 120 - qw / 2, 179, 2);
 }
-
-void Launcher::drawCard()   {}   // unused — grid replaces per-card draw
-void Launcher::drawArrows() {}
-void Launcher::drawDots()   {}
 
 void Launcher::returnToMenu() {
   if (_active) { _active->end(); _active = nullptr; }
-  _inGame = false;
-  _paused = false;
+  _inGame    = false;
+  _paused    = false;
+  _activeIdx = -1;
   _needsRedraw = true;
 }
 
