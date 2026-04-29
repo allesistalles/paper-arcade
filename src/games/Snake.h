@@ -50,9 +50,10 @@ private:
   SnakeLogic    _logic;
   TFT_eSPI*     _tft = nullptr;
   ScoreManager* _scores = nullptr;
-  TFT_eSprite   _sprite{nullptr};
   uint32_t      _lastTick = 0, _tickMs = 150;
   uint32_t      _hiScore = 0;
   bool          _done = false;
+  bool          _dirty = true;       // redraw the whole screen on next draw()
+  bool          _doneScreenShown = false;
 };
 #endif

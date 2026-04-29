@@ -67,11 +67,11 @@ void Snake::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _scores = &scores;
   _hiScore = scores.getHighScore("snake");
   _done    = false;
+  _doneScreenShown = false;
   _tickMs  = 150;
-  _sprite.setColorDepth(16);
-  _sprite.createSprite(320, 240);
   _logic.init(COLS, ROWS);
   _lastTick = millis();
+  _dirty = true;
 }
 
 void Snake::update(const InputEvent& input) {
@@ -92,41 +92,52 @@ void Snake::update(const InputEvent& input) {
       _hiScore = _scores->getHighScore("snake");
       _done = true;
     }
+    _dirty = true;
   }
 }
 
 void Snake::draw() {
-  TFT_eSprite& s = _sprite;
-  s.fillSprite(s.color24to16(Theme::BG));
+  if (!_dirty) return;            // only redraw on game tick / state change
+  _dirty = false;
 
+  TFT_eSPI& s = *_tft;
+  uint16_t bg     = s.color24to16(Theme::BG);
+  uint16_t accent = s.color24to16(Theme::ACCENT);
+  uint16_t dim    = s.color24to16(Theme::DIM);
+  uint16_t sec    = s.color24to16(Theme::SECONDARY);
+  uint16_t text   = s.color24to16(Theme::TEXT);
+
+  s.fillScreen(bg);
+
+  // Food
   Point f = _logic.foodPos();
-  s.fillRect(f.x * CELL + 2, f.y * CELL + 2, CELL - 4, CELL - 4,
-             s.color24to16(Theme::ACCENT));
+  s.fillRect(f.x * CELL + 2, f.y * CELL + 2, CELL - 4, CELL - 4, accent);
 
+  // Snake body — head distinct from rest
   const auto& body = _logic.body();
   for (size_t i = 0; i < body.size(); i++) {
-    uint16_t c = (i == 0) ? s.color24to16(Theme::DIM) : s.color24to16(Theme::SECONDARY);
+    uint16_t c = (i == 0) ? dim : sec;
     s.fillRect(body[i].x * CELL + 1, body[i].y * CELL + 1, CELL - 2, CELL - 2, c);
   }
 
+  // HUD line
   char buf[32];
   snprintf(buf, sizeof(buf), "SCORE %lu", (unsigned long)_logic.score());
-  s.setTextColor(s.color24to16(Theme::TEXT), s.color24to16(Theme::BG));
+  s.setTextColor(text, bg);
   s.drawString(buf, 4, 224, 2);
   snprintf(buf, sizeof(buf), "HI %lu", (unsigned long)_hiScore);
   s.drawString(buf, 240, 224, 2);
 
   if (_done) {
-    s.setTextColor(s.color24to16(Theme::ACCENT), s.color24to16(Theme::BG));
+    s.setTextColor(accent, bg);
     s.drawString("GAME OVER", 80, 90, 4);
-    s.setTextColor(s.color24to16(Theme::TEXT), s.color24to16(Theme::BG));
+    s.setTextColor(text, bg);
     s.drawString("TAP TO EXIT", 90, 130, 2);
+    _doneScreenShown = true;
   }
-
-  s.pushSprite(0, 0);
 }
 
 void Snake::end() {
-  _sprite.deleteSprite();
+  // Nothing to free — we don't own any heap allocations.
 }
 #endif

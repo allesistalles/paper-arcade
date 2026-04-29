@@ -25,11 +25,17 @@ Game* Launcher::update(const InputEvent& evt) {
     _current--;
     _needsRedraw = true;
   } else if (evt.type == InputEvent::TAP) {
+    Serial.printf("[launcher] TAP at (%u,%u) count=%d current=%d\n",
+                  evt.x, evt.y, _count, _current);
     if (evt.x > 50 && evt.x < 270 && evt.y > 35 && evt.y < 205) {
+      Serial.printf("[launcher] LAUNCHING %s\n", _games[_current]->name());
       _active = _games[_current];
       _inGame = true;
       _active->begin(*_tft, *_assets, *_scores);
+      Serial.println("[launcher] begin() returned, returning to main loop");
       return _active;
+    } else {
+      Serial.println("[launcher] tap outside card hit-box");
     }
   }
   return nullptr;

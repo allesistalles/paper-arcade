@@ -6,9 +6,10 @@ InputManager::InputManager(uint8_t csPin, uint8_t irqPin) : _touch(csPin, irqPin
 
 void InputManager::begin(SPIClass& spi) {
   // Touch must use the VSPI bus (passed in) — separate from TFT's HSPI.
-  // mapX/mapY translate raw XPT2046 coords into 320x240 landscape screen coords,
-  // so don't call _touch.setRotation() here.
   _touch.begin(spi);
+  // Match the TFT's landscape orientation (rotation 1) so getPoint() returns
+  // coords aligned with the screen's X/Y axes.
+  _touch.setRotation(1);
 }
 
 uint16_t InputManager::mapX(uint16_t raw) {
@@ -48,6 +49,7 @@ InputEvent InputManager::read() {
       _lastX  = sx; _lastY  = sy;
       _touchStart = millis();
       _wasTouched = true;
+      Serial.printf("[touch] DOWN raw=(%u,%u) screen=(%u,%u)\n", p.x, p.y, sx, sy);
     } else {
       int16_t mdx = (int16_t)sx - (int16_t)_startX;
       int16_t mdy = (int16_t)sy - (int16_t)_startY;
@@ -68,6 +70,8 @@ InputEvent InputManager::read() {
     evt.x  = _lastX;  evt.y  = _lastY;
     evt.dx = dx;      evt.dy = dy;
     _wasTouched = false;
+    Serial.printf("[touch] UP held=%lums delta=(%d,%d) at=(%u,%u) type=%u\n",
+                  (unsigned long)held, dx, dy, _lastX, _lastY, (unsigned)evt.type);
   }
 
   return evt;
