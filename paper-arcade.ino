@@ -14,8 +14,7 @@
 #include "src/ui/Theme.h"
 
 // ---- Game includes (uncomment as built) ----
-// #include "src/games/Snake.h"
-// ... etc
+#include "src/games/Snake.h"
 
 // CYD pin map:
 //   TFT (HSPI):   MOSI=13 MISO=12 SCK=14 CS=15 DC=2 BL=21
@@ -108,8 +107,7 @@ void setup() {
   scores.begin();
 
   // ---- Game registry (uncomment as each game is built) ----
-  // launcher.addGame(new Snake());
-  // ... etc
+  launcher.addGame(new Snake());
 
   launcher.begin(tft, assets, scores);
 }
