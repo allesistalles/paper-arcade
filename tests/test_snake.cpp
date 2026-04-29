@@ -22,12 +22,13 @@ int main() {
   s.tick();
   ASSERT_EQ(s.headY(), 5);
 
-  // Wall collision
+  // Wall collision: snake starts at (7,7) moving RIGHT.
+  // setDirection(LEFT) is rejected (would reverse), so direction stays RIGHT.
+  // Walk RIGHT until head sits at x=19 (right edge), next tick walks off.
   SnakeLogic s2;
   s2.init(20, 15);
-  s2.setDirection(SnakeLogic::LEFT);
-  for (int i = 0; i < 7; i++) s2.tick();   // moves to x=0
-  ASSERT_FALSE(s2.tick());                  // next step hits wall
+  for (int i = 0; i < 12; i++) ASSERT_TRUE(s2.tick());   // x: 7 → 19
+  ASSERT_FALSE(s2.tick());                                // x=20, hits wall
 
   TEST_SUMMARY();
 }
