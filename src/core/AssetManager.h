@@ -10,7 +10,7 @@ class AssetManager {
 public:
   static const int CACHE_SIZE = 4;
 
-  void begin(uint8_t sdCsPin);
+  bool begin(uint8_t sdCsPin);
 
   // "snake/apple" → /sprites/snake/apple.bmp
   // Returns nullptr if file missing or invalid.

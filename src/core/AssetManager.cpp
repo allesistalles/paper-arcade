@@ -1,8 +1,8 @@
 #include "AssetManager.h"
 #ifndef NATIVE_TEST
 
-void AssetManager::begin(uint8_t sdCsPin) {
-  SD.begin(sdCsPin);
+bool AssetManager::begin(uint8_t sdCsPin) {
+  return SD.begin(sdCsPin);
 }
 
 int AssetManager::findSlot(const char* key) {
@@ -31,12 +31,14 @@ bool AssetManager::loadBmpFromSD(const char* path, Slot& slot) {
   if (f.read(header, 54) != 54) { f.close(); return false; }
   if (header[0] != 'B' || header[1] != 'M') { f.close(); return false; }
 
-  uint32_t dataOffset = *(uint32_t*)(header + 10);
-  uint32_t width      = *(uint32_t*)(header + 18);
-  uint32_t height     = *(uint32_t*)(header + 22);
-  uint16_t bpp        = *(uint16_t*)(header + 28);
+  uint32_t dataOffset, width, height;
+  uint16_t bpp;
+  memcpy(&dataOffset, header + 10, 4);
+  memcpy(&width,      header + 18, 4);
+  memcpy(&height,     header + 22, 4);
+  memcpy(&bpp,        header + 28, 2);
 
-  if (bpp != 16 || width > 320 || height > 240) { f.close(); return false; }
+  if (bpp != 16 || width == 0 || height == 0 || width > 320 || height > 240) { f.close(); return false; }
 
   uint32_t pixelCount = width * height;
   slot.pixels = new (std::nothrow) uint16_t[pixelCount];
@@ -48,7 +50,12 @@ bool AssetManager::loadBmpFromSD(const char* path, Slot& slot) {
   f.seek(dataOffset);
   // BMP rows are bottom-up
   for (int row = (int)height - 1; row >= 0; row--) {
-    f.read((uint8_t*)&slot.pixels[row * width], width * 2);
+    if (f.read((uint8_t*)&slot.pixels[row * width], width * 2) != (int)(width * 2)) {
+      delete[] slot.pixels;
+      slot.pixels = nullptr;
+      f.close();
+      return false;
+    }
   }
   f.close();
   return true;
@@ -70,6 +77,7 @@ const uint16_t* AssetManager::loadBitmap(const char* key, uint16_t& w, uint16_t&
     return nullptr;
   }
   strncpy(_slots[idx].key, key, 31);
+  _slots[idx].key[31] = '\0';
   _slots[idx].lastUsed = ++_tick;
   w = _slots[idx].w; h = _slots[idx].h;
   return _slots[idx].pixels;
