@@ -24,14 +24,16 @@ A full redesign of the Paper Arcade device experience — homepage, in-game chro
 
 Replace the existing Synthwave palette in `src/ui/Theme.h` entirely.
 
-| Role | Name | Hex | RGB565 | Usage |
+> **Note:** RGB565 values are computed with `((r>>3)<<11) | ((g>>2)<<5) | (b>>3)`. The hex values below are canonical; implementer should recompute RGB565 in `Theme.h` using that formula rather than copying from this table.
+
+| Role | Name | Hex | RGB565 (approx) | Usage |
 |------|------|-----|--------|-------|
 | Background | `BG` | `#000000` | `0x0000` | All screen backgrounds |
 | Primary text | `TEXT` | `#FFFFFF` | `0xFFFF` | Game names on game-over, scores |
-| Accent / CTA | `ACCENT` | `#0A84FF` | `0x0433` | RESUME button, header divider |
-| Muted | `MUTED` | `#8E8E93` | `0x8C92` | Labels, hints, unplayed scores ("—") |
-| Card surface | `CARD` | `#1C1C1E` | `0x1C0F` | Pause modal background |
-| Separator | `SEP` | `#2C2C2E` | `0x2945` | Row dividers, subtle borders |
+| Accent / CTA | `ACCENT` | `#0A84FF` | `0x0C3F` | RESUME button, header divider |
+| Muted | `MUTED` | `#8E8E93` | `0x8C72` | Labels, hints, unplayed scores ("--") |
+| Card surface | `CARD` | `#1C1C1E` | `0x18E3` | Pause modal background |
+| Separator | `SEP` | `#2C2C2E` | `0x2965` | Row dividers, subtle borders |
 | Danger | `DANGER` | `#FF453A` | `0xFA27` | QUIT button |
 
 ### Per-game accent colours
@@ -127,7 +129,11 @@ Applied to every game. Games themselves handle their own play-area rendering. Th
 - Accent underline: `drawFastHLine(0, 20, 240, gameAccentColour565)`
 - **Game play area:** y=22 to y=319 (298px height for gameplay)
 
-**Implementation note:** The HUD strip is drawn by the `Launcher::draw()` method AFTER calling `_active->draw()`, so games don't need to reserve space — they fill the entire 240×320, and the HUD is composited on top. Games should avoid placing important elements in the top 22px.
+**Implementation note — compositing order:**
+1. `_active->draw()` fills the full 240×320 canvas (including y=0..21). In normal play this is game content; on game-over it is the full-screen overlay.
+2. `Launcher::draw()` then draws the HUD strip (y=0..21) on top, overwriting whatever the game drew there.
+
+This means games never need to reserve space for the HUD — they paint freely and the Launcher composites the chrome. Games should not place essential text in the top 22px during normal play, but game-over content below y=22 is always fully visible.
 
 ### Pause Overlay (long-press 1.5s → LONG_PRESS event)
 
