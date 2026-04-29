@@ -25,6 +25,8 @@ public:
   virtual void        end() = 0;
   virtual const char* name()      = 0;
   virtual uint32_t    highScore() = 0;
+  // score() returns the live in-game score for the HUD strip display.
+  virtual uint32_t    score()     = 0;
   // isDone() returning true means: the next user TAP returns to launcher.
   // Games typically flip this true on their game-over screen.
   virtual bool        isDone()    = 0;
