@@ -7,8 +7,8 @@
 
 class InputManager {
 public:
-  InputManager(uint8_t csPin);
-  void       begin();
+  InputManager(uint8_t csPin, uint8_t irqPin);
+  void       begin(SPIClass& spi);   // call after spi.begin() with VSPI pins
   InputEvent read();
 
 private:

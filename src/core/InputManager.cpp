@@ -2,12 +2,13 @@
 
 #ifndef NATIVE_TEST
 
-InputManager::InputManager(uint8_t csPin) : _touch(csPin) {}
+InputManager::InputManager(uint8_t csPin, uint8_t irqPin) : _touch(csPin, irqPin) {}
 
-void InputManager::begin() {
-  _touch.begin();
-  // Don't call _touch.setRotation() — mapX/mapY translate raw XPT2046 coords
-  // (200..3900, 300..3800) into 320x240 landscape screen coords ourselves.
+void InputManager::begin(SPIClass& spi) {
+  // Touch must use the VSPI bus (passed in) — separate from TFT's HSPI.
+  // mapX/mapY translate raw XPT2046 coords into 320x240 landscape screen coords,
+  // so don't call _touch.setRotation() here.
+  _touch.begin(spi);
 }
 
 uint16_t InputManager::mapX(uint16_t raw) {
