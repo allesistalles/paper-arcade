@@ -86,7 +86,7 @@ void setup() {
 
   tft.init();
   tft.invertDisplay(true);   // CYD ILI9341_2 panel ships with inverted polarity
-  tft.setRotation(2);        // portrait, USB plug at bottom (240w x 320h)
+  tft.setRotation(0);        // portrait, USB plug at bottom (240w x 320h)
   tft.fillScreen(tft.color24to16(Theme::BG));
 
   // Bring up the touch VSPI bus before any touched() probe is called.

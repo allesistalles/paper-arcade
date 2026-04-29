@@ -7,9 +7,9 @@ InputManager::InputManager(uint8_t csPin, uint8_t irqPin) : _touch(csPin, irqPin
 void InputManager::begin(SPIClass& spi) {
   // Touch must use the VSPI bus (passed in) — separate from TFT's HSPI.
   _touch.begin(spi);
-  // Match the TFT's portrait orientation (rotation 2 = USB-down) so getPoint()
-  // returns coords aligned with the screen's X/Y axes.
-  _touch.setRotation(2);
+  // Match the TFT's portrait orientation (rotation 0 = USB-down on CYD) so
+  // getPoint() returns coords aligned with the screen's X/Y axes.
+  _touch.setRotation(0);
 }
 
 // Screen is 240w × 320h in portrait. mapX → 0..239, mapY → 0..319.
