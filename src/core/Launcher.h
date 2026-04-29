@@ -10,6 +10,8 @@ public:
   static const int MAX_GAMES = 10;
 
   void  begin(TFT_eSPI& tft, AssetManager& assets, ScoreManager& scores);
+  // Caller retains ownership of the Game*; Launcher does not delete.
+  // Intended for static or process-lifetime allocations.
   void  addGame(Game* game);
   Game* update(const InputEvent& evt);  // returns active game (nullptr = still in menu)
   void  draw();

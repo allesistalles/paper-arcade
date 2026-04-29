@@ -33,7 +33,7 @@ Game* Launcher::update(const InputEvent& evt) {
 }
 
 void Launcher::draw() {
-  if (_inGame) { _active->draw(); return; }
+  if (_inGame) { if (_active) _active->draw(); return; }
   if (!_needsRedraw) return;
 
   TFT_eSPI& t = *_tft;
