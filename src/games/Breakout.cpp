@@ -1,6 +1,7 @@
 #include "Breakout.h"
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 
 void Breakout::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _tft = &tft; _scores = &scores;
@@ -83,49 +84,37 @@ void Breakout::draw() {
   _dirty = false;
 
   TFT_eSPI& s = *_tft;
-  uint16_t bg  = s.color24to16(Theme::BG);
-  uint16_t acc = s.color24to16(Theme::ACCENT);
-  uint16_t txt = s.color24to16(Theme::TEXT);
 
-  s.fillScreen(bg);
+  if (_gameOver) {
+    bool won = (_remaining == 0);
+    drawGameOverOverlay(s, "BREAKOUT", _score, Theme::BREAKOUT565, won);
+    return;
+  }
 
-  // Bricks
+  s.fillScreen(Theme::BG565);
+
+  // Bricks (BRICK_TOP=52 now)
+  static const uint16_t ROW_COLS[6] = {
+    Theme::DANGER565, Theme::MINES565, Theme::G2048565,
+    Theme::FLAPPY565, Theme::SNAKE565, Theme::BREAKOUT565
+  };
   for (int r = 0; r < ROWS; r++) {
-    // Row colours cycling through the palette
-    static const uint32_t ROW_COLS[6] = {
-      0xf72585, 0x7209b7, 0x4cc9f0, 0x07e0a0, 0xffd700, 0xff6b35
-    };
-    uint16_t col = s.color24to16(ROW_COLS[r]);
     for (int c = 0; c < COLS; c++) {
       if (!_bricks[r * COLS + c]) continue;
-      s.fillRect(c * (BRICK_W + 2), BRICK_TOP + r * BRICK_H, BRICK_W, BRICK_H - 2, col);
+      s.fillRect(c * (BRICK_W + 2), BRICK_TOP + r * BRICK_H, BRICK_W, BRICK_H - 2, ROW_COLS[r]);
     }
   }
 
   // Paddle
-  s.fillRoundRect(_paddleX, 295, PADDLE_W, PADDLE_H, 3, acc);
+  s.fillRoundRect(_paddleX, 295, PADDLE_W, PADDLE_H, 3, Theme::BREAKOUT565);
 
   // Ball
-  s.fillCircle((int)_bx, (int)_by, 5, txt);
+  s.fillCircle((int)_bx, (int)_by, 5, Theme::TEXT565);
 
-  // HUD
-  char buf[32];
-  s.setTextColor(txt, bg);
-  snprintf(buf, sizeof(buf), "SCORE %lu", (unsigned long)_score);
-  s.drawString(buf, 4, 308, 2);
-  snprintf(buf, sizeof(buf), "LIVES %d", _lives);
-  int lw = s.textWidth(buf, 2);
-  s.drawString(buf, 240 - lw - 4, 308, 2);
-
-  if (_gameOver) {
-    s.fillRect(20, 170, 200, 60, bg);
-    s.setTextColor(acc, bg);
-    const char* msg = (_remaining == 0) ? "YOU WIN!" : "GAME OVER";
-    int gw = s.textWidth(msg, 4);
-    s.drawString(msg, 120 - gw / 2, 175, 4);
-    s.setTextColor(txt, bg);
-    int tw = s.textWidth("TAP TO EXIT", 2);
-    s.drawString("TAP TO EXIT", 120 - tw / 2, 212, 2);
+  // Lives dots at y=310
+  for (int i = 0; i < 3; i++) {
+    uint16_t col = (i < (int)_lives) ? Theme::BREAKOUT565 : Theme::SEP565;
+    s.fillCircle(108 + i * 14, 310, 4, col);
   }
 }
 

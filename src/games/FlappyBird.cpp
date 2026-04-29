@@ -1,6 +1,7 @@
 #include "FlappyBird.h"
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 #include <cstdlib>
 
 int FlappyBird::randGapY() {
@@ -71,43 +72,26 @@ void FlappyBird::draw() {
   _dirty = false;
 
   TFT_eSPI& s = *_tft;
-  uint16_t bg  = s.color24to16(Theme::BG);
-  uint16_t sec = s.color24to16(Theme::SECONDARY);
-  uint16_t acc = s.color24to16(Theme::ACCENT);
-  uint16_t txt = s.color24to16(Theme::TEXT);
-
-  s.fillScreen(bg);
-
-  // Pipes
-  for (int i = 0; i < PIPE_COUNT; i++) {
-    Pipe& p = _pipes[i];
-    // Left pipe (before gap)
-    s.fillRect(p.x, 0, PIPE_W, p.gapY, sec);
-    // Right pipe (after gap)
-    s.fillRect(p.x, p.gapY + GAP_H, PIPE_W, 320 - (p.gapY + GAP_H), sec);
-    s.drawRect(p.x, 0, PIPE_W, p.gapY, acc);
-    s.drawRect(p.x, p.gapY + GAP_H, PIPE_W, 320 - (p.gapY + GAP_H), acc);
-  }
-
-  // Bird (yellow circle)
-  s.fillCircle(BIRD_X, (int)_birdY, 8, 0xFFE0);
-  s.fillCircle(BIRD_X + 3, (int)_birdY - 2, 2, 0x0000);
-
-  // Score
-  char buf[16];
-  snprintf(buf, sizeof(buf), "%lu", (unsigned long)_score);
-  s.setTextColor(txt, bg);
-  s.drawString(buf, 4, 4, 4);
 
   if (_gameOver) {
-    s.fillRect(20, 130, 200, 60, bg);
-    s.setTextColor(acc, bg);
-    int gw = s.textWidth("GAME OVER", 4);
-    s.drawString("GAME OVER", 120 - gw / 2, 135, 4);
-    s.setTextColor(txt, bg);
-    int tw = s.textWidth("TAP TO EXIT", 2);
-    s.drawString("TAP TO EXIT", 120 - tw / 2, 172, 2);
+    drawGameOverOverlay(s, "FLAPPY", _score, Theme::FLAPPY565);
+    return;
   }
+
+  s.fillScreen(Theme::BG565);
+
+  // Pipes — full height, HUD composites on top
+  for (int i = 0; i < PIPE_COUNT; i++) {
+    Pipe& p = _pipes[i];
+    s.fillRect(p.x, 0,               PIPE_W, p.gapY,                     Theme::SNAKE565);
+    s.fillRect(p.x, p.gapY + GAP_H, PIPE_W, 320 - (p.gapY + GAP_H),    Theme::SNAKE565);
+    s.drawRect(p.x, 0,               PIPE_W, p.gapY,                     Theme::FLAPPY565);
+    s.drawRect(p.x, p.gapY + GAP_H, PIPE_W, 320 - (p.gapY + GAP_H),    Theme::FLAPPY565);
+  }
+
+  // Bird
+  s.fillCircle(BIRD_X, (int)_birdY, 8, Theme::FLAPPY565);
+  s.fillCircle(BIRD_X + 3, (int)_birdY - 2, 2, Theme::BG565);
 }
 
 void FlappyBird::end() {}

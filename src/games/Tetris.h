@@ -49,6 +49,7 @@ public:
   void        draw() override;
   void        end() override;
   const char* name()      override { return "TETRIS"; }
+  uint32_t    score()     override { return _logic.score(); }
   uint32_t    highScore() override { return _hiScore; }
   bool        isDone()    override { return _done; }
 
@@ -59,7 +60,7 @@ private:
   //   Left strip x<60: top quarter = rotate, rest = move left
   //   Right strip x>175: move right
   //   Bottom bar y>255: hard drop
-  static const int CELL = 11, OFFX = 65, OFFY = 30;
+  static const int CELL = 11, OFFX = 65, OFFY = 52;
 
   TetrisLogic   _logic;
   TFT_eSPI*     _tft = nullptr;

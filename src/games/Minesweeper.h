@@ -48,6 +48,7 @@ public:
   void        end() override;
   const char* name()      override { return "MINES"; }
   uint32_t    highScore() override { return _hiScore; }
+  uint32_t    score()     override { return (uint32_t)_logic.revealedCount() * 10; }
   bool        isDone()    override { return _done; }
 
 private:

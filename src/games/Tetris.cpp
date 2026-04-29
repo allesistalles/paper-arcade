@@ -106,6 +106,7 @@ void TetrisLogic::pieceBlocks(int outX[4], int outY[4]) const {
 
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 
 // Classic Tetris colours per piece type
 static const uint16_t PIECE_COLORS[8] = {
@@ -164,17 +165,17 @@ void Tetris::draw() {
   _dirty = false;
 
   TFT_eSPI& s = *_tft;
-  uint16_t bg  = s.color24to16(Theme::BG);
-  uint16_t acc = s.color24to16(Theme::ACCENT);
-  uint16_t drk = s.color24to16(Theme::DARK);
-  uint16_t dim = s.color24to16(Theme::DIM);
-  uint16_t txt = s.color24to16(Theme::TEXT);
-  uint16_t sec = s.color24to16(Theme::SECONDARY);
 
-  s.fillScreen(bg);
+  if (_logic.gameOver()) {
+    drawGameOverOverlay(s, "TETRIS", _logic.score(), Theme::TETRIS565);
+    return;
+  }
+
+  s.fillScreen(Theme::BG565);
 
   // Board border
-  s.drawRect(OFFX - 1, OFFY - 1, TetrisLogic::W * CELL + 2, TetrisLogic::H * CELL + 2, acc);
+  s.drawRect(OFFX - 1, OFFY - 1,
+             TetrisLogic::W * CELL + 2, TetrisLogic::H * CELL + 2, Theme::TETRIS565);
 
   // Stack
   for (int y = 0; y < TetrisLogic::H; y++)
@@ -192,59 +193,20 @@ void Tetris::draw() {
     s.fillRect(OFFX + bx[i] * CELL, OFFY + by[i] * CELL, CELL - 1, CELL - 1, pc);
   }
 
-  // Ghost piece (drop preview)
-  int ghostY = _logic.activePieceY();
-  // find lowest valid Y
-  while (true) {
-    int ny = ghostY + 1;
-    bool ok = true;
-    uint16_t shape = SHAPES[_logic.activePieceType()][_logic.activePieceRot()];
-    for (int b = 0; b < 16 && ok; b++) {
-      if (!(shape & (1 << b))) continue;
-      int gx = _logic.activePieceX() + (b % 4);
-      int gy = ny + (b / 4);
-      if (gx < 0 || gx >= TetrisLogic::W || gy >= TetrisLogic::H) ok = false;
-      if (gy >= 0 && _logic.cell(gx, gy)) ok = false;
-    }
-    if (!ok) break;
-    ghostY = ny;
-  }
-  if (ghostY != _logic.activePieceY()) {
-    uint16_t shape = SHAPES[_logic.activePieceType()][_logic.activePieceRot()];
-    for (int b = 0; b < 16; b++) {
-      if (!(shape & (1 << b))) continue;
-      int gx = _logic.activePieceX() + (b % 4);
-      int gy = ghostY + (b / 4);
-      if (gy < 0) continue;
-      s.drawRect(OFFX + gx * CELL, OFFY + gy * CELL, CELL - 1, CELL - 1, drk);
-    }
-  }
-
-  // Sidebar (x=180)
-  s.setTextColor(dim, bg); s.drawString("SCORE", 178, 32, 2);
+  // Sidebar score
+  s.setTextColor(Theme::MUTED565, Theme::BG565);
+  s.drawString("SCORE", 178, 52, 2);
   char buf[16];
   snprintf(buf, sizeof(buf), "%lu", (unsigned long)_logic.score());
-  s.setTextColor(txt, bg); s.drawString(buf, 178, 50, 2);
+  s.setTextColor(Theme::TEXT565, Theme::BG565);
+  s.drawString(buf, 178, 70, 2);
 
-  s.setTextColor(dim, bg); s.drawString("BEST", 178, 80, 2);
-  snprintf(buf, sizeof(buf), "%lu", (unsigned long)_hiScore);
-  s.setTextColor(txt, bg); s.drawString(buf, 178, 98, 2);
-
-  // Control zone hints
-  s.setTextColor(sec, bg);
-  s.drawString("ROT", 4, 35, 2);
-  s.drawString("<", 10, 120, 4);
-  s.drawString(">", 180, 120, 4);
-  s.drawString("DROP", 88, 262, 2);
-
-  if (_logic.gameOver()) {
-    s.fillRect(OFFX, OFFY + 80, TetrisLogic::W * CELL, 60, bg);
-    s.setTextColor(acc, bg);
-    s.drawString("GAME", OFFX + 12, OFFY + 90, 4);
-    s.drawString("OVER", OFFX + 12, OFFY + 120, 4);
-    s.setTextColor(txt, bg);
-    s.drawString("TAP", OFFX + 22, OFFY + 150, 2);
-  }
+  // Control hints (barely visible)
+  s.setTextColor(Theme::SEP565, Theme::BG565);
+  s.drawString("ROT", 4, 55, 2);
+  s.drawString("<", 10, 140, 4);
+  s.drawString(">", 180, 140, 4);
+  s.drawString("DROP", 88, 280, 2);
 }
 
 void Tetris::end() {}

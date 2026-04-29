@@ -7,7 +7,7 @@ class PongLogic {
 public:
   static const uint8_t  WIN_SCORE = 5;
   static const int16_t  PAD_W = 60, PAD_H = 8, BALL_R = 5;
-  static const int16_t  PLAYER_Y = 290, AI_Y = 18;
+  static const int16_t  PLAYER_Y = 290, AI_Y = 24;
 
   void     init(uint16_t w, uint16_t h);
   void     setPlayerX(int16_t x);      // left edge of player paddle
@@ -43,6 +43,7 @@ public:
   void        end() override;
   const char* name()      override { return "PONG"; }
   uint32_t    highScore() override { return _hiScore; }
+  uint32_t    score()     override { return (uint32_t)_logic.playerScore() * 100; }
   bool        isDone()    override { return _done; }
 
 private:

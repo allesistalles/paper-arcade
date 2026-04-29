@@ -61,13 +61,13 @@ bool SnakeLogic::onBody(int16_t x, int16_t y) const {
 
 #ifndef NATIVE_TEST
 #include "../ui/Theme.h"
+#include "../ui/GameOver.h"
 
 void Snake::begin(TFT_eSPI& tft, AssetManager&, ScoreManager& scores) {
   _tft    = &tft;
   _scores = &scores;
   _hiScore = scores.getHighScore("snake");
   _done    = false;
-  _doneScreenShown = false;
   _tickMs  = 150;
   _logic.init(COLS, ROWS);
   _lastTick = millis();
@@ -97,46 +97,27 @@ void Snake::update(const InputEvent& input) {
 }
 
 void Snake::draw() {
-  if (!_dirty) return;            // only redraw on game tick / state change
+  if (!_dirty) return;
   _dirty = false;
 
   TFT_eSPI& s = *_tft;
-  uint16_t bg     = s.color24to16(Theme::BG);
-  uint16_t accent = s.color24to16(Theme::ACCENT);
-  uint16_t dim    = s.color24to16(Theme::DIM);
-  uint16_t sec    = s.color24to16(Theme::SECONDARY);
-  uint16_t text   = s.color24to16(Theme::TEXT);
-
-  s.fillScreen(bg);
-
-  // Food
-  Point f = _logic.foodPos();
-  s.fillRect(f.x * CELL + 2, f.y * CELL + 2, CELL - 4, CELL - 4, accent);
-
-  // Snake body — head distinct from rest
-  const auto& body = _logic.body();
-  for (size_t i = 0; i < body.size(); i++) {
-    uint16_t c = (i == 0) ? dim : sec;
-    s.fillRect(body[i].x * CELL + 1, body[i].y * CELL + 1, CELL - 2, CELL - 2, c);
-  }
-
-  // HUD strip at the bottom (y=290..320)
-  char buf[32];
-  snprintf(buf, sizeof(buf), "SCORE %lu", (unsigned long)_logic.score());
-  s.setTextColor(text, bg);
-  s.drawString(buf, 4, 296, 2);
-  snprintf(buf, sizeof(buf), "HI %lu", (unsigned long)_hiScore);
-  int hiW = s.textWidth(buf, 2);
-  s.drawString(buf, 240 - hiW - 4, 296, 2);
 
   if (_done) {
-    s.setTextColor(accent, bg);
-    int gW = s.textWidth("GAME OVER", 4);
-    s.drawString("GAME OVER", 120 - gW / 2, 130, 4);
-    s.setTextColor(text, bg);
-    int tW = s.textWidth("TAP TO EXIT", 2);
-    s.drawString("TAP TO EXIT", 120 - tW / 2, 175, 2);
-    _doneScreenShown = true;
+    drawGameOverOverlay(s, "SNAKE", _logic.score(), Theme::SNAKE565);
+    return;
+  }
+
+  s.fillScreen(Theme::BG565);
+
+  // Food — y shifted +22 so content stays below the Launcher's HUD strip
+  Point f = _logic.foodPos();
+  s.fillRect(f.x * CELL + 2, f.y * CELL + 2 + 22, CELL - 4, CELL - 4, Theme::ACCENT565);
+
+  // Snake body — head bright green, body darker
+  const auto& body = _logic.body();
+  for (size_t i = 0; i < body.size(); i++) {
+    uint16_t c = (i == 0) ? Theme::SNAKE565 : 0x1B05;  // head / body
+    s.fillRect(body[i].x * CELL + 1, body[i].y * CELL + 1 + 22, CELL - 2, CELL - 2, c);
   }
 }
 

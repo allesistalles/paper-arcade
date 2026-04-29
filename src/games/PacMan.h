@@ -12,6 +12,7 @@ public:
   void        draw() override;
   void        end() override;
   const char* name()      override { return "PACMAN"; }
+  uint32_t    score()     override { return _score; }
   uint32_t    highScore() override { return _hiScore; }
   bool        isDone()    override { return _done; }
 
